@@ -103,6 +103,11 @@ async function toggleValue(filter, value) {
     await loadProducts();
 }
 
+async function setScalarValue(filter, value) {
+    state.values[filter.slug] = value === '' ? [] : [value];
+    await loadProducts();
+}
+
 async function removeFilter(filter) {
     state.values[filter.slug] = selectedValues(filter.slug).filter(
         (value) => value !== filter.value
@@ -238,6 +243,33 @@ onMounted(async () => {
                                 {{ value.label }}
                             </button>
                         </div>
+
+                        <div v-else-if="filter.type === 'boolean'" class="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                class="rounded-full border border-black/15 px-3 py-1.5 text-xs dark:border-white/20"
+                                :class="{ 'bg-ink text-white dark:bg-rose dark:text-ink': isSelected(filter.slug, 'true') }"
+                                @click="toggleValue(filter, 'true')"
+                            >
+                                بله
+                            </button>
+                            <button
+                                type="button"
+                                class="rounded-full border border-black/15 px-3 py-1.5 text-xs dark:border-white/20"
+                                :class="{ 'bg-ink text-white dark:bg-rose dark:text-ink': isSelected(filter.slug, 'false') }"
+                                @click="toggleValue(filter, 'false')"
+                            >
+                                خیر
+                            </button>
+                        </div>
+
+                        <input
+                            v-else-if="filter.type === 'number' || filter.type === 'text'"
+                            :type="filter.type === 'number' ? 'number' : 'text'"
+                            :value="selectedValues(filter.slug)[0] || ''"
+                            class="w-full rounded-lg border border-black/15 bg-white px-3 py-2 text-sm dark:border-white/20 dark:bg-white/10"
+                            @change="setScalarValue(filter, $event.target.value)"
+                        >
 
                         <p v-else class="text-xs text-black/50 dark:text-white/50">
                             برای این نوع ویژگی هنوز مقداری تعریف نشده است.

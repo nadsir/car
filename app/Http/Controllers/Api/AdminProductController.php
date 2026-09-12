@@ -550,16 +550,25 @@ class AdminProductController extends Controller
             return collect();
         }
 
-        return Category::query()
+        $categories = Category::query()
             ->whereIn('id', $categoryIds)
-            ->get()
-            ->flatMap(
-                fn (Category $category) => $this->effectiveAttributes
-                    ->for($category)
-                    ->pluck('id')
-            )
-            ->unique()
-            ->values();
+            ->get();
+
+        $allowedAttributeIds = null;
+
+        foreach ($categories as $category) {
+            $categoryAttributeIds = $this->effectiveAttributes
+                ->for($category)
+                ->pluck('id');
+
+            $allowedAttributeIds = $allowedAttributeIds === null
+                ? $categoryAttributeIds
+                : $allowedAttributeIds
+                    ->intersect($categoryAttributeIds)
+                    ->values();
+        }
+
+        return $allowedAttributeIds ?? collect();
     }
 
     protected function validateVariantAttributeValues(

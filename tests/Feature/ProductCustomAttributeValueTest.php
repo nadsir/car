@@ -151,6 +151,75 @@ class ProductCustomAttributeValueTest extends TestCase
             ->assertJsonValidationErrors('custom_attribute_values.0.value');
     }
 
+    public function test_admin_product_api_validates_boolean_and_text_custom_values(): void
+    {
+        $this->authenticate();
+        $category = Category::create([
+            'name' => 'Engine',
+            'slug' => 'engine',
+            'is_active' => true,
+        ]);
+        $genuine = $this->attribute('Genuine', 'genuine', 'boolean');
+        $note = $this->attribute('Note', 'note', 'text');
+
+        foreach ([$genuine, $note] as $attribute) {
+            $category->attributes()->attach($attribute->id, [
+                'is_filterable' => false,
+                'is_required' => false,
+                'is_variant_axis' => false,
+            ]);
+        }
+
+        $this->postJson('/api/admin/products', [
+            'name' => 'Engine mount',
+            'slug' => 'engine-mount',
+            'price' => 100,
+            'category_ids' => [$category->id],
+            'custom_attribute_values' => [
+                ['attribute_id' => $genuine->id, 'value' => 'false'],
+                ['attribute_id' => $note->id, 'value' => 'Suitable for TU5'],
+            ],
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('product_custom_attribute_values', [
+            'attribute_id' => $genuine->id,
+            'value_type' => 'boolean',
+            'value_boolean' => false,
+        ]);
+        $this->assertDatabaseHas('product_custom_attribute_values', [
+            'attribute_id' => $note->id,
+            'value_type' => 'text',
+            'value_text' => 'Suitable for TU5',
+        ]);
+    }
+
+    public function test_custom_values_must_be_shared_by_all_selected_categories(): void
+    {
+        $this->authenticate();
+        $engine = Category::create(['name' => 'Engine', 'slug' => 'engine', 'is_active' => true]);
+        $brakes = Category::create(['name' => 'Brakes', 'slug' => 'brakes', 'is_active' => true]);
+        $weight = $this->attribute('Weight', 'weight', 'number');
+
+        $engine->attributes()->attach($weight->id, [
+            'is_filterable' => false,
+            'is_required' => false,
+            'is_variant_axis' => false,
+        ]);
+
+        $this->postJson('/api/admin/products', [
+            'name' => 'Incompatible part',
+            'slug' => 'incompatible-part',
+            'price' => 100,
+            'category_ids' => [$engine->id, $brakes->id],
+            'custom_attribute_values' => [[
+                'attribute_id' => $weight->id,
+                'value' => 1.5,
+            ]],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('custom_attribute_values.0.value');
+    }
+
     private function attribute(string $name, string $slug, string $type): Attribute
     {
         return Attribute::create([

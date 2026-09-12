@@ -16,6 +16,9 @@ class CategoryAttributeSeeder extends Seeder
             'part-condition' => [false, true, false],
             'part-number' => [false, false, false],
             'oem-number' => [false, false, false],
+            'installation-side' => [false, false, false],
+            'vehicle-type' => [false, true, false],
+            'weight' => [false, false, false],
             'warranty-months' => [false, false, false],
         ]);
 
@@ -47,6 +50,7 @@ class CategoryAttributeSeeder extends Seeder
         $this->sync('electrical-and-electronics', [
             'voltage' => [true, true, true],
             'amperage' => [false, true, true],
+            'engine-code' => [false, false, false],
         ]);
 
         $this->sync('filters-and-service', [

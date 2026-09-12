@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductVariant;
+use App\Services\EffectiveCategoryAttributesResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -46,5 +47,53 @@ class AutomotiveSeederTest extends TestCase
         $this->getJson('/api/products?category=brake-pads&brand=bosch')
             ->assertOk()
             ->assertJsonPath('data.0.slug', 'front-brake-pad-peugeot-405');
+    }
+
+    public function test_seeded_product_values_match_their_effective_category_attributes(): void
+    {
+        $this->seed();
+        $resolver = app(EffectiveCategoryAttributesResolver::class);
+
+        Product::query()
+            ->with([
+                'categories',
+                'attributeValues',
+                'customAttributeValues',
+                'variants.attributeValues',
+            ])
+            ->each(function (Product $product) use ($resolver): void {
+                $allowedAttributeIds = $resolver
+                    ->for($product->categories->sole())
+                    ->pluck('id');
+                $variantAxisIds = $resolver
+                    ->for($product->categories->sole())
+                    ->filter(fn (Attribute $attribute) => $attribute->pivot->is_variant_axis)
+                    ->pluck('id');
+
+                $this->assertTrue(
+                    $product->attributeValues
+                        ->pluck('attribute_id')
+                        ->diff($allowedAttributeIds)
+                        ->isEmpty(),
+                    "Option attributes are incompatible for {$product->slug}."
+                );
+                $this->assertTrue(
+                    $product->customAttributeValues
+                        ->pluck('attribute_id')
+                        ->diff($allowedAttributeIds)
+                        ->isEmpty(),
+                    "Custom attributes are incompatible for {$product->slug}."
+                );
+
+                foreach ($product->variants as $variant) {
+                    $this->assertTrue(
+                        $variant->attributeValues
+                            ->pluck('attribute_id')
+                            ->diff($variantAxisIds)
+                            ->isEmpty(),
+                        "Variant attributes are incompatible for {$product->slug}."
+                    );
+                }
+            });
     }
 }

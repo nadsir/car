@@ -155,6 +155,73 @@ class ProductVariantAxisTest extends TestCase
         ])->assertCreated();
     }
 
+    public function test_product_values_must_be_shared_by_all_selected_categories(): void
+    {
+        $this->authenticate();
+
+        $brakes = Category::create([
+            'name' => 'Brake system',
+            'slug' => 'brake-system',
+            'is_active' => true,
+        ]);
+        $electrical = Category::create([
+            'name' => 'Electrical',
+            'slug' => 'electrical',
+            'is_active' => true,
+        ]);
+        $brand = Attribute::create([
+            'name' => 'Brand',
+            'slug' => 'brand',
+            'type' => 'select',
+        ]);
+        $material = Attribute::create([
+            'name' => 'Material',
+            'slug' => 'material',
+            'type' => 'select',
+        ]);
+        $bosch = AttributeValue::create([
+            'attribute_id' => $brand->id,
+            'label' => 'Bosch',
+            'value' => 'bosch',
+        ]);
+        $ceramic = AttributeValue::create([
+            'attribute_id' => $material->id,
+            'label' => 'Ceramic',
+            'value' => 'ceramic',
+        ]);
+
+        foreach ([$brakes, $electrical] as $category) {
+            $category->attributes()->attach($brand->id, [
+                'is_filterable' => true,
+                'is_required' => false,
+                'is_variant_axis' => false,
+            ]);
+        }
+        $brakes->attributes()->attach($material->id, [
+            'is_filterable' => true,
+            'is_required' => false,
+            'is_variant_axis' => false,
+        ]);
+
+        $this->postJson('/api/admin/products', [
+            'name' => 'Incompatible part',
+            'slug' => 'incompatible-part',
+            'price' => 100,
+            'category_ids' => [$brakes->id, $electrical->id],
+            'attribute_value_ids' => [$ceramic->id],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('attribute_value_ids');
+
+        $this->postJson('/api/admin/products', [
+            'name' => 'Compatible part',
+            'slug' => 'compatible-part',
+            'price' => 100,
+            'category_ids' => [$brakes->id, $electrical->id],
+            'attribute_value_ids' => [$bosch->id],
+        ])->assertCreated();
+    }
+
     private function authenticate(): void
     {
         Sanctum::actingAs(User::factory()->create([
