@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Attribute;
-use App\Models\Category;
 use Illuminate\Database\Seeder;
 
 class AttributeSeeder extends Seeder
@@ -11,150 +10,34 @@ class AttributeSeeder extends Seeder
     public function run(): void
     {
         $attributes = [
-            [
-                'name' => 'رنگ',
-                'slug' => 'color',
-                'type' => 'color',
-                'is_filterable' => true,
-                'is_required' => false,
-                'sort_order' => 1,
-            ],
-
-            [
-                'name' => 'سایز لباس',
-                'slug' => 'size',
-                'type' => 'select',
-                'is_filterable' => true,
-                'is_required' => false,
-                'sort_order' => 2,
-            ],
-
-            [
-                'name' => 'جنس',
-                'slug' => 'material',
-                'type' => 'select',
-                'is_filterable' => true,
-                'is_required' => false,
-                'sort_order' => 3,
-            ],
-
-            [
-                'name' => 'نوع کیف',
-                'slug' => 'bag-type',
-                'type' => 'select',
-                'is_filterable' => true,
-                'is_required' => false,
-                'sort_order' => 4,
-            ],
-
-            [
-                'name' => 'نوع کفش',
-                'slug' => 'shoe-type',
-                'type' => 'select',
-                'is_filterable' => true,
-                'is_required' => false,
-                'sort_order' => 5,
-            ],
-
-            [
-                'name' => 'سایز کفش',
-                'slug' => 'shoe-size',
-                'type' => 'select',
-                'is_filterable' => true,
-                'is_required' => false,
-                'sort_order' => 6,
-            ],
-
-            [
-                'name' => 'جنس فریم',
-                'slug' => 'frame-material',
-                'type' => 'select',
-                'is_filterable' => true,
-                'is_required' => false,
-                'sort_order' => 7,
-            ],
-
-            [
-                'name' => 'شکل فریم',
-                'slug' => 'frame-shape',
-                'type' => 'select',
-                'is_filterable' => true,
-                'is_required' => false,
-                'sort_order' => 8,
-            ],
+            ['name' => 'برند', 'slug' => 'brand', 'type' => 'select'],
+            ['name' => 'کشور سازنده', 'slug' => 'country-of-origin', 'type' => 'select'],
+            ['name' => 'وضعیت قطعه', 'slug' => 'part-condition', 'type' => 'select'],
+            ['name' => 'محل نصب', 'slug' => 'installation-side', 'type' => 'select'],
+            ['name' => 'محور', 'slug' => 'axle-position', 'type' => 'select'],
+            ['name' => 'جنس', 'slug' => 'material', 'type' => 'select'],
+            ['name' => 'نوع خودرو', 'slug' => 'vehicle-type', 'type' => 'select'],
+            ['name' => 'نوع سوخت', 'slug' => 'fuel-type', 'type' => 'select'],
+            ['name' => 'ولتاژ', 'slug' => 'voltage', 'type' => 'select'],
+            ['name' => 'آمپراژ', 'slug' => 'amperage', 'type' => 'select'],
+            ['name' => 'استاندارد', 'slug' => 'standard', 'type' => 'select'],
+            ['name' => 'شماره فنی', 'slug' => 'part-number', 'type' => 'text'],
+            ['name' => 'شماره OEM', 'slug' => 'oem-number', 'type' => 'text'],
+            ['name' => 'کد موتور', 'slug' => 'engine-code', 'type' => 'text'],
+            ['name' => 'وزن (کیلوگرم)', 'slug' => 'weight', 'type' => 'number'],
+            ['name' => 'مدت گارانتی (ماه)', 'slug' => 'warranty-months', 'type' => 'number'],
         ];
 
-        foreach ($attributes as $attributeData) {
+        foreach ($attributes as $sortOrder => $attribute) {
             Attribute::updateOrCreate(
-                ['slug' => $attributeData['slug']],
-                $attributeData
-            );
-        }
-
-        /*
-         * لباس
-         */
-        $this->syncCategoryAttributes(
-            'clothing',
-            ['material', 'size', 'color']
-        );
-
-        /*
-         * کیف
-         */
-        $this->syncCategoryAttributes(
-            'bags',
-            ['bag-type', 'material', 'color']
-        );
-
-        /*
-         * کفش
-         */
-        $this->syncCategoryAttributes(
-            'shoes',
-            ['shoe-type', 'shoe-size', 'material', 'color']
-        );
-
-        /*
-         * عینک
-         */
-        $this->syncCategoryAttributes(
-            'glasses',
-            ['frame-material', 'frame-shape', 'color']
-        );
-
-        /*
-         * اکسسوری
-         */
-        $this->syncCategoryAttributes(
-            'accessories',
-            ['material', 'color']
-        );
-    }
-
-    private function syncCategoryAttributes(
-        string $categorySlug,
-        array $attributeSlugs
-    ): void {
-        $category = Category::where('slug', $categorySlug)->first();
-
-        if (!$category) {
-            return;
-        }
-
-        foreach ($attributeSlugs as $index => $attributeSlug) {
-            $attribute = Attribute::where('slug', $attributeSlug)->first();
-
-            if (!$attribute) {
-                continue;
-            }
-
-            $category->attributes()->syncWithoutDetaching([
-                $attribute->id => [
+                ['slug' => $attribute['slug']],
+                [
+                    ...$attribute,
+                    'is_filterable' => false,
                     'is_required' => false,
-                    'sort_order' => $index,
-                ],
-            ]);
+                    'sort_order' => $sortOrder,
+                ]
+            );
         }
     }
 }

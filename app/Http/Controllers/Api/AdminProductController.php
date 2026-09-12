@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductCustomAttributeValue;
 use App\Services\EffectiveCategoryAttributesResolver;
+use App\Services\CategoryTreeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -17,26 +18,20 @@ use Illuminate\Validation\ValidationException;
 class AdminProductController extends Controller
 {
     public function __construct(
-        private readonly EffectiveCategoryAttributesResolver $effectiveAttributes
+        private readonly EffectiveCategoryAttributesResolver $effectiveAttributes,
+        private readonly CategoryTreeService $categoryTree
     ) {
     }
 
     public function meta()
     {
-        $categories = Category::query()
+        $allCategories = Category::query()
             ->where('is_active', true)
-            ->whereNull('parent_id')
-            ->with([
-                'attributes.values',
-                'children' => function ($query) {
-                    $query
-                        ->where('is_active', true)
-                        ->with('attributes.values')
-                        ->orderBy('sort_order');
-                },
-            ])
+            ->with('attributes.values')
             ->orderBy('sort_order')
             ->get();
+
+        $categories = $this->categoryTree->build($allCategories);
 
         $attributes = \App\Models\Attribute::query()
             ->with([
@@ -47,17 +42,10 @@ class AdminProductController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        $categoryAttributes = [];
-
-        foreach ($categories as $category) {
-            $categoryAttributes[$category->id] =
-                $category->attributes->values();
-
-            foreach ($category->children as $child) {
-                $categoryAttributes[$child->id] =
-                    $child->attributes->values();
-            }
-        }
+        $categoryAttributes = $this->effectiveAttributes
+            ->forMany($allCategories)
+            ->map(fn ($attributes) => $attributes->values())
+            ->all();
 
         return response()->json([
             'categories' => $categories,

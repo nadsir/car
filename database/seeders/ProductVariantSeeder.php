@@ -11,132 +11,26 @@ class ProductVariantSeeder extends Seeder
 {
     public function run(): void
     {
-        /*
-        |--------------------------------------------------------------------------
-        | مانتو
-        |--------------------------------------------------------------------------
-        */
-
-        $manto = Product::where(
-            'slug',
-            'classic-black-manto'
-        )->firstOrFail();
-
-        $this->createVariant(
-            $manto,
-            [
-                'size' => ['m'],
-            ],
-            5
-        );
-
-        $this->createVariant(
-            $manto,
-            [
-                'size' => ['l'],
-            ],
-            3
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | شومیز
-        |--------------------------------------------------------------------------
-        */
-
-        $shirt = Product::where(
-            'slug',
-            'white-satin-shirt'
-        )->firstOrFail();
-
-        $this->createVariant(
-            $shirt,
-            [
-                'size' => ['s'],
-            ],
-            4
-        );
-
-        $this->createVariant(
-            $shirt,
-            [
-                'size' => ['m'],
-            ],
-            6
-        );
-
-        $this->createVariant(
-            $shirt,
-            [
-                'size' => ['l'],
-            ],
-            3
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | کفش
-        |--------------------------------------------------------------------------
-        */
-
-        $shoe = Product::where(
-            'slug',
-            'classic-womens-shoes'
-        )->firstOrFail();
-
-        $this->createVariant(
-            $shoe,
-            [
-                'shoe-size' => ['38'],
-            ],
-            4
-        );
-
-        $this->createVariant(
-            $shoe,
-            [
-                'shoe-size' => ['39'],
-            ],
-            2
-        );
+        $this->createVariant('front-brake-pad-peugeot-405', ['axle-position' => 'front'], 11);
+        $this->createVariant('front-brake-pad-peugeot-405', ['axle-position' => 'rear'], 7);
+        $this->createVariant('battery-60ah', ['voltage' => '12v', 'amperage' => '60ah'], 10);
+        $this->createVariant('battery-60ah', ['voltage' => '12v', 'amperage' => '66ah'], 4);
     }
 
-
-    /**
-     * ساخت Variant
-     */
-    private function createVariant(
-        Product $product,
-        array $attributes,
-        int $stock
-    ): ProductVariant {
-
+    /** @param array<string, string> $values */
+    private function createVariant(string $productSlug, array $values, int $stock): void
+    {
+        $product = Product::where('slug', $productSlug)->firstOrFail();
         $attributeValueIds = [];
 
-        foreach ($attributes as $attributeSlug => $values) {
-
-            foreach ($values as $value) {
-
-                $attributeValue = AttributeValue::whereHas(
-                    'attribute',
-                    function ($query) use ($attributeSlug) {
-                        $query->where('slug', $attributeSlug);
-                    }
-                )
-                    ->where('value', $value)
-                    ->firstOrFail();
-
-                $attributeValueIds[] = $attributeValue->id;
-            }
+        foreach ($values as $attributeSlug => $value) {
+            $attributeValueIds[] = AttributeValue::whereHas(
+                'attribute',
+                fn ($query) => $query->where('slug', $attributeSlug)
+            )->where('value', $value)->firstOrFail()->id;
         }
 
-        /*
-         * مرتب‌سازی برای ساخت combination_key ثابت
-         */
         sort($attributeValueIds);
-
         $combinationKey = implode('-', $attributeValueIds);
 
         $variant = ProductVariant::updateOrCreate(
@@ -145,23 +39,12 @@ class ProductVariantSeeder extends Seeder
                 'combination_key' => $combinationKey,
             ],
             [
-                'sku' => $product->sku . '-' . strtoupper(
-                    str_replace('-', '', $combinationKey)
-                ),
-                'price' => null,
-                'compare_at_price' => null,
+                'sku' => $product->sku . '-V' . strtoupper(str_replace('-', '', $combinationKey)),
                 'stock' => $stock,
                 'is_active' => true,
             ]
         );
 
-        /*
-         * اتصال Attribute Valueها به Variant
-         */
-        $variant->attributeValues()->sync(
-            $attributeValueIds
-        );
-
-        return $variant;
+        $variant->attributeValues()->sync($attributeValueIds);
     }
 }

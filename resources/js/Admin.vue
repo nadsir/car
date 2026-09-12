@@ -199,6 +199,24 @@ const categoryConfigurationOptions = computed(() => {
     return result;
 });
 
+const productCategoryOptions = computed(() => {
+    const result = [];
+
+    const visit = (category, depth = 0) => {
+        result.push({ ...category, depth });
+
+        for (const child of category.children || []) {
+            visit(child, depth + 1);
+        }
+    };
+
+    for (const category of categories.value) {
+        visit(category);
+    }
+
+    return result;
+});
+
 const configuredCategory = computed(() => {
     return categoryConfigurationOptions.value.find(
         category => category.id === configuredCategoryId.value
@@ -226,19 +244,9 @@ function formatPrice(value) {
 }
 
 function categoryName(categoryId) {
-    for (const category of categories.value) {
-        if (category.id === categoryId) {
-            return category.name;
-        }
-
-        for (const child of category.children || []) {
-            if (child.id === categoryId) {
-                return child.name;
-            }
-        }
-    }
-
-    return '';
+    return productCategoryOptions.value.find(
+        category => category.id === categoryId
+    )?.name || '';
 }
 
 function selectedCategoryNames() {
@@ -1125,7 +1133,7 @@ onMounted(async () => {
 
         <aside class="sidebar">
             <div class="brand">
-                ROYA
+                CAR
                 <span>ADMIN</span>
             </div>
 
@@ -1155,7 +1163,7 @@ onMounted(async () => {
                 پنل مدیریت فروشگاه
 
                 <small>
-                    ROYA ADMIN · v1.0
+                    CAR ADMIN · v1.0
                 </small>
             </div>
         </aside>
@@ -1517,8 +1525,8 @@ onMounted(async () => {
                             </h3>
 
                             <p>
-                                اولین محصول فروشگاه
-                                ROYA را اضافه کنید.
+                                اولین محصول فروشگاه قطعات خودرو
+                                را اضافه کنید.
                             </p>
 
                             <button
@@ -2282,7 +2290,7 @@ onMounted(async () => {
             <input
                 v-model="imageAltText"
                 type="text"
-                placeholder="مثلاً مانتو مشکی ROYA"
+                                    placeholder="مثلاً لنت ترمز جلو پژو 405"
             />
 
         </label>
@@ -2444,65 +2452,21 @@ onMounted(async () => {
                                 "
                                 class="category-select"
                             >
-                                <div
-                                    v-for="category in categories"
-                                    :key="
-                                        category.id
-                                    "
-                                    class="category-group"
+                                <label
+                                    v-for="category in productCategoryOptions"
+                                    :key="category.id"
+                                    class="check-card"
+                                    :class="{ child: category.depth > 0 }"
+                                    :style="{ marginRight: `${category.depth * 16}px` }"
                                 >
-                                    <label
-                                        class="check-card"
-                                    >
-                                        <input
-                                            v-model="
-                                                form.category_ids
-                                            "
-                                            type="checkbox"
-                                            :value="
-                                                category.id
-                                            "
-                                        />
+                                    <input
+                                        v-model="form.category_ids"
+                                        type="checkbox"
+                                        :value="category.id"
+                                    />
 
-                                        <span>
-                                            {{
-                                                category.name
-                                            }}
-                                        </span>
-                                    </label>
-
-                                    <div
-                                        v-if="
-                                            category.children
-                                                ?.length
-                                        "
-                                        class="children"
-                                    >
-                                        <label
-                                            v-for="child in category.children"
-                                            :key="
-                                                child.id
-                                            "
-                                            class="check-card child"
-                                        >
-                                            <input
-                                                v-model="
-                                                    form.category_ids
-                                                "
-                                                type="checkbox"
-                                                :value="
-                                                    child.id
-                                                "
-                                            />
-
-                                            <span>
-                                                {{
-                                                    child.name
-                                                }}
-                                            </span>
-                                        </label>
-                                    </div>
-                                </div>
+                                    <span>{{ category.name }}</span>
+                                </label>
                             </div>
 
                             <div

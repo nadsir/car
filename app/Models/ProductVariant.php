@@ -41,8 +41,8 @@ class ProductVariant extends Model
      * Attribute values of this variant
      *
      * Example:
-     * Color: Black
-     * Size: M
+     * Axle position: Front
+     * Voltage: 12V
      */
     public function attributeValues(): BelongsToMany
     {

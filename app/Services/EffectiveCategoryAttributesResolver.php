@@ -49,6 +49,52 @@ class EffectiveCategoryAttributesResolver
     }
 
     /**
+     * Resolve effective attributes for an already-loaded category collection.
+     * This avoids a query per category in metadata endpoints.
+     *
+     * @param Collection<int, Category> $categories
+     * @return Collection<int, Collection<int, Attribute>>
+     */
+    public function forMany(Collection $categories): Collection
+    {
+        $categoriesById = $categories->keyBy('id');
+        $resolved = collect();
+
+        foreach ($categories as $category) {
+            $path = [];
+            $seen = [];
+            $currentId = $category->id;
+
+            while ($currentId !== null) {
+                if (isset($seen[$currentId])) {
+                    throw new LogicException('Category hierarchy contains a cycle.');
+                }
+
+                $seen[$currentId] = true;
+                $path[] = $currentId;
+                $currentId = $categoriesById->get($currentId)?->parent_id;
+            }
+
+            $attributes = collect();
+
+            foreach (array_reverse($path) as $categoryId) {
+                foreach ($categoriesById->get($categoryId)?->attributes ?? [] as $attribute) {
+                    $attributes->put($attribute->id, $attribute);
+                }
+            }
+
+            $resolved->put(
+                $category->id,
+                $attributes
+                    ->sortBy(fn (Attribute $attribute) => $attribute->pivot->sort_order)
+                    ->values()
+            );
+        }
+
+        return $resolved;
+    }
+
+    /**
      * @return list<int>
      */
     private function ancestorPathIds(Category $category): array
