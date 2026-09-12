@@ -37,6 +37,8 @@ class Attribute extends Model
         )
         ->withPivot([
             'is_required',
+            'is_filterable',
+            'is_variant_axis',
             'sort_order',
         ])
         ->withTimestamps()
@@ -50,5 +52,10 @@ class Attribute extends Model
     {
         return $this->hasMany(AttributeValue::class)
             ->orderBy('sort_order');
+    }
+
+    public function customProductValues(): HasMany
+    {
+        return $this->hasMany(ProductCustomAttributeValue::class);
     }
 }

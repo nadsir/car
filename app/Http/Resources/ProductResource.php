@@ -63,6 +63,19 @@ class ProductResource extends JsonResource
                         ];
                     })->values();
                 }),
+
+            'custom_attributes' => $this->customAttributeValues
+                ->map(function ($customValue) {
+                    return [
+                        'id' => $customValue->id,
+                        'name' => $customValue->attribute->name,
+                        'slug' => $customValue->attribute->slug,
+                        'type' => $customValue->value_type,
+                        'value' => $customValue->typedValue(),
+                    ];
+                })
+                ->values(),
+
                 'in_stock' => $this->variants->isNotEmpty()
                 ? $this->variants->where('is_active', true)->sum('stock') > 0
                 : $this->stock > 0,

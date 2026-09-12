@@ -3,15 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attribute;
 use App\Models\AttributeValue;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductCustomAttributeValue;
+use App\Services\EffectiveCategoryAttributesResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AdminProductController extends Controller
 {
+    public function __construct(
+        private readonly EffectiveCategoryAttributesResolver $effectiveAttributes
+    ) {
+    }
+
     public function meta()
     {
         $categories = Category::query()
@@ -60,15 +69,24 @@ class AdminProductController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateProduct($request);
+        $this->validateCustomAttributeValues(
+            $data['custom_attribute_values'] ?? []
+        );
+        $this->validateVariantAttributeValues(
+            $data['variants'] ?? [],
+            $data['category_ids'] ?? []
+        );
 
         return DB::transaction(function () use ($data) {
             $categoryIds = $data['category_ids'] ?? [];
             $attributeValueIds = $data['attribute_value_ids'] ?? [];
+            $customAttributeValues = $data['custom_attribute_values'] ?? [];
             $variants = $data['variants'] ?? [];
 
             unset(
                 $data['category_ids'],
                 $data['attribute_value_ids'],
+                $data['custom_attribute_values'],
                 $data['variants']
             );
 
@@ -84,6 +102,11 @@ class AdminProductController extends Controller
                 $attributeValueIds
             );
 
+            $this->syncCustomAttributeValues(
+                $product,
+                $customAttributeValues
+            );
+
             $this->syncVariants(
                 $product,
                 $variants
@@ -93,6 +116,7 @@ class AdminProductController extends Controller
                 $product->load([
                     'categories',
                     'attributeValues.attribute',
+                    'customAttributeValues.attribute',
                     'variants.attributeValues.attribute',
                 ]),
                 201
@@ -105,6 +129,7 @@ class AdminProductController extends Controller
         $product->load([
             'categories',
             'attributeValues.attribute',
+            'customAttributeValues.attribute',
             'variants.attributeValues.attribute',
             'images',
         ]);
@@ -120,6 +145,13 @@ class AdminProductController extends Controller
             $request,
             $product
         );
+        $this->validateCustomAttributeValues(
+            $data['custom_attribute_values'] ?? []
+        );
+        $this->validateVariantAttributeValues(
+            $data['variants'] ?? [],
+            $data['category_ids'] ?? []
+        );
 
         return DB::transaction(function () use (
             $data,
@@ -127,11 +159,13 @@ class AdminProductController extends Controller
         ) {
             $categoryIds = $data['category_ids'] ?? [];
             $attributeValueIds = $data['attribute_value_ids'] ?? [];
+            $customAttributeValues = $data['custom_attribute_values'] ?? [];
             $variants = $data['variants'] ?? [];
 
             unset(
                 $data['category_ids'],
                 $data['attribute_value_ids'],
+                $data['custom_attribute_values'],
                 $data['variants']
             );
 
@@ -145,6 +179,11 @@ class AdminProductController extends Controller
             $this->syncProductAttributes(
                 $product,
                 $attributeValueIds
+            );
+
+            $this->syncCustomAttributeValues(
+                $product,
+                $customAttributeValues
             );
 
             /*
@@ -163,6 +202,7 @@ class AdminProductController extends Controller
                 $product->fresh()->load([
                     'categories',
                     'attributeValues.attribute',
+                    'customAttributeValues.attribute',
                     'variants.attributeValues.attribute',
                     'images',
                 ])
@@ -266,6 +306,22 @@ class AdminProductController extends Controller
                 'exists:attribute_values,id',
             ],
 
+            'custom_attribute_values' => [
+                'nullable',
+                'array',
+            ],
+
+            'custom_attribute_values.*.attribute_id' => [
+                'required',
+                'integer',
+                'distinct',
+                'exists:attributes,id',
+            ],
+
+            'custom_attribute_values.*.value' => [
+                'required',
+            ],
+
             'variants' => [
                 'nullable',
                 'array',
@@ -346,6 +402,168 @@ class AdminProductController extends Controller
         $product->attributeValues()->sync(
             $productAttributes
         );
+    }
+
+    protected function syncCustomAttributeValues(
+        Product $product,
+        array $customAttributeValues
+    ): void {
+        $attributeIds = collect($customAttributeValues)
+            ->pluck('attribute_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $product->customAttributeValues()
+            ->whereNotIn('attribute_id', $attributeIds)
+            ->delete();
+
+        foreach ($customAttributeValues as $valueData) {
+            $attribute = Attribute::findOrFail($valueData['attribute_id']);
+            $value = $valueData['value'];
+
+            $data = [
+                'value_type' => $attribute->type,
+                'value_number' => null,
+                'value_boolean' => null,
+                'value_text' => null,
+            ];
+
+            if ($attribute->type === 'number') {
+                $data['value_number'] = $value;
+            } elseif ($attribute->type === 'boolean') {
+                $data['value_boolean'] = filter_var(
+                    $value,
+                    FILTER_VALIDATE_BOOLEAN
+                );
+            } else {
+                $data['value_text'] = $value;
+            }
+
+            ProductCustomAttributeValue::updateOrCreate(
+                [
+                    'product_id' => $product->id,
+                    'attribute_id' => $attribute->id,
+                ],
+                $data
+            );
+        }
+    }
+
+    protected function validateCustomAttributeValues(array $customAttributeValues): void
+    {
+        if ($customAttributeValues === []) {
+            return;
+        }
+
+        $attributes = Attribute::query()
+            ->whereIn(
+                'id',
+                collect($customAttributeValues)->pluck('attribute_id')
+            )
+            ->get()
+            ->keyBy('id');
+
+        foreach ($customAttributeValues as $index => $valueData) {
+            $attribute = $attributes->get($valueData['attribute_id']);
+            $value = $valueData['value'];
+            $key = "custom_attribute_values.{$index}.value";
+
+            if ($attribute === null || ! in_array(
+                $attribute->type,
+                ['number', 'boolean', 'text'],
+                true
+            )) {
+                throw ValidationException::withMessages([
+                    $key => ['Only number, boolean, and text attributes accept custom values.'],
+                ]);
+            }
+
+            if ($attribute->type === 'number' && ! is_numeric($value)) {
+                throw ValidationException::withMessages([
+                    $key => ['The value must be numeric.'],
+                ]);
+            }
+
+            if ($attribute->type === 'boolean' && ! in_array(
+                $value,
+                [true, false, 0, 1, '0', '1', 'true', 'false'],
+                true
+            )) {
+                throw ValidationException::withMessages([
+                    $key => ['The value must be boolean.'],
+                ]);
+            }
+
+            if ($attribute->type === 'text' && (! is_string($value) || mb_strlen($value) > 65535)) {
+                throw ValidationException::withMessages([
+                    $key => ['The value must be text with at most 65535 characters.'],
+                ]);
+            }
+        }
+    }
+
+    protected function validateVariantAttributeValues(
+        array $variants,
+        array $categoryIds
+    ): void {
+        $variantValueIds = collect($variants)
+            ->flatMap(
+                fn (array $variant) => $variant['attribute_value_ids'] ?? []
+            )
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($variantValueIds->isEmpty()) {
+            return;
+        }
+
+        $categories = Category::query()
+            ->whereIn('id', $categoryIds)
+            ->get();
+
+        $allowedAttributeIds = null;
+
+        foreach ($categories as $category) {
+            $categoryAxisIds = $this->effectiveAttributes
+                ->for($category)
+                ->filter(function (Attribute $attribute) {
+                    return $attribute->pivot->is_variant_axis
+                        && in_array(
+                            $attribute->type,
+                            ['select', 'multiselect', 'color'],
+                            true
+                        );
+                })
+                ->pluck('id');
+
+            $allowedAttributeIds = $allowedAttributeIds === null
+                ? $categoryAxisIds
+                : $allowedAttributeIds->intersect($categoryAxisIds)->values();
+        }
+
+        $attributeValues = AttributeValue::query()
+            ->whereIn('id', $variantValueIds)
+            ->get(['id', 'attribute_id'])
+            ->keyBy('id');
+
+        foreach ($variants as $index => $variant) {
+            foreach ($variant['attribute_value_ids'] ?? [] as $valueId) {
+                $attributeValue = $attributeValues->get((int) $valueId);
+
+                if (
+                    $attributeValue === null
+                    || $allowedAttributeIds === null
+                    || ! $allowedAttributeIds->contains($attributeValue->attribute_id)
+                ) {
+                    throw ValidationException::withMessages([
+                        "variants.{$index}.attribute_value_ids" => [
+                            'Variant values must belong to a shared category variant axis.',
+                        ],
+                    ]);
+                }
+            }
+        }
     }
 
     protected function syncVariants(

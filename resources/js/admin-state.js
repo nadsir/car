@@ -3,12 +3,69 @@ import axios from 'axios';
 
 export const products = ref([]);
 export const categories = ref([]);
+export const adminCategories = ref([]);
 export const attributes = ref([]);
 export const categoryAttributes = ref({});
 
 export const loading = ref(false);
 export const saving = ref(false);
 export const editingProductId = ref(null);
+export const adminUser = ref(null);
+export const isAuthenticated = ref(false);
+
+const adminTokenStorageKey = 'car.admin_token';
+
+function applyAdminToken(token) {
+    axios.defaults.headers.common.Authorization =
+        `Bearer ${token}`;
+}
+
+function clearAdminToken() {
+    delete axios.defaults.headers.common.Authorization;
+    localStorage.removeItem(adminTokenStorageKey);
+    adminUser.value = null;
+    isAuthenticated.value = false;
+}
+
+export async function restoreAdminSession() {
+    const token = localStorage.getItem(adminTokenStorageKey);
+
+    if (!token) {
+        return false;
+    }
+
+    applyAdminToken(token);
+
+    try {
+        const response = await axios.get('/api/admin/me');
+
+        adminUser.value = response.data.user;
+        isAuthenticated.value = true;
+
+        return true;
+    } catch {
+        clearAdminToken();
+
+        return false;
+    }
+}
+
+export async function login(credentials) {
+    const response = await axios.post('/api/admin/login', credentials);
+
+    localStorage.setItem(adminTokenStorageKey, response.data.token);
+    applyAdminToken(response.data.token);
+    adminUser.value = response.data.user;
+    isAuthenticated.value = true;
+}
+
+export async function logout() {
+    try {
+        await axios.post('/api/admin/logout');
+    } finally {
+        clearAdminToken();
+    }
+}
 
 export function createEmptyForm() {
     return {
@@ -24,6 +81,7 @@ export function createEmptyForm() {
         is_featured: false,
         category_ids: [],
         attribute_value_ids: [],
+        custom_attribute_values: [],
         variants: [],
         images: [],
     };
@@ -55,6 +113,12 @@ export async function loadMeta() {
         response.data.category_attributes || {};
 }
 
+export async function loadAdminCategories() {
+    const response = await axios.get('/api/admin/categories');
+
+    adminCategories.value = response.data.data || [];
+}
+
 export async function load() {
     loading.value = true;
 
@@ -62,10 +126,97 @@ export async function load() {
         await Promise.all([
             loadProducts(),
             loadMeta(),
+            loadAdminCategories(),
         ]);
     } finally {
         loading.value = false;
     }
+}
+
+export async function loadCategoryAttributeConfig(categoryId) {
+    const response = await axios.get(
+        `/api/admin/categories/${categoryId}/attributes`
+    );
+
+    return response.data.data || [];
+}
+
+export async function saveCategoryAttributeConfig(
+    categoryId,
+    configurations
+) {
+    const response = await axios.put(
+        `/api/admin/categories/${categoryId}/attributes`,
+        { attributes: configurations }
+    );
+
+    return response.data.data || [];
+}
+
+export async function createCategory(data) {
+    const response = await axios.post('/api/admin/categories', data);
+
+    return response.data.data;
+}
+
+export async function updateCategory(categoryId, data) {
+    const response = await axios.put(
+        `/api/admin/categories/${categoryId}`,
+        data
+    );
+
+    return response.data.data;
+}
+
+export async function removeCategory(categoryId) {
+    await axios.delete(`/api/admin/categories/${categoryId}`);
+}
+
+export async function createAttribute(data) {
+    const response = await axios.post('/api/admin/attributes', data);
+
+    return response.data.data;
+}
+
+export async function updateAttribute(attributeId, data) {
+    const response = await axios.put(
+        `/api/admin/attributes/${attributeId}`,
+        data
+    );
+
+    return response.data.data;
+}
+
+export async function removeAttribute(attributeId) {
+    await axios.delete(`/api/admin/attributes/${attributeId}`);
+}
+
+export async function createAttributeValue(attributeId, data) {
+    const response = await axios.post(
+        `/api/admin/attributes/${attributeId}/values`,
+        data
+    );
+
+    return response.data.data;
+}
+
+export async function updateAttributeValue(
+    attributeId,
+    valueId,
+    data
+) {
+    const response = await axios.put(
+        `/api/admin/attributes/${attributeId}/values/${valueId}`,
+        data
+    );
+
+    return response.data.data;
+}
+
+export async function removeAttributeValue(attributeId, valueId) {
+    await axios.delete(
+        `/api/admin/attributes/${attributeId}/values/${valueId}`
+    );
 }
 
 export function addVariant() {
@@ -157,6 +308,17 @@ export async function loadProduct(id) {
             attribute_value_ids:
                 (product.attribute_values || [])
                     .map(value => value.id),
+
+            custom_attribute_values:
+                (product.custom_attribute_values || [])
+                    .map(value => ({
+                        attribute_id: value.attribute_id,
+                        value: value.value_type === 'number'
+                            ? value.value_number
+                            : value.value_type === 'boolean'
+                                ? Boolean(value.value_boolean)
+                                : value.value_text,
+                    })),
 
             variants:
                 (product.variants || [])

@@ -50,7 +50,7 @@ class Product extends Model
     /**
      * Product attributes
      */
- public function attributeValues(): BelongsToMany
+    public function attributeValues(): BelongsToMany
 {
     return $this->belongsToMany(
         AttributeValue::class,
@@ -59,6 +59,15 @@ class Product extends Model
     ->withPivot('attribute_id')
     ->withTimestamps();
 }
+
+    /**
+     * Scalar values for number, boolean, and text attributes.
+     */
+    public function customAttributeValues(): HasMany
+    {
+        return $this->hasMany(ProductCustomAttributeValue::class);
+    }
+
     /**
      * Product variants
      */

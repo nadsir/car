@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Category;
 use App\Http\Resources\CategoryFilterResource;
+use App\Models\Category;
 
 class CategoryFilterController extends Controller
 {
@@ -24,7 +24,7 @@ class CategoryFilterController extends Controller
         $filters = $categories
             ->flatMap(function (Category $category) {
                 return $category->attributes()
-                    ->where('attributes.is_filterable', true)
+                    ->wherePivot('is_filterable', true)
                     ->with([
                         'values' => function ($query) {
                             $query->orderBy('sort_order');

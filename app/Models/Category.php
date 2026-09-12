@@ -78,8 +78,11 @@ class Category extends Model
             Attribute::class,
             'category_attributes'
         )
+        ->using(CategoryAttribute::class)
         ->withPivot([
             'is_required',
+            'is_filterable',
+            'is_variant_axis',
             'sort_order',
         ])
         ->withTimestamps()

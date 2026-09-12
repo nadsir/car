@@ -19,10 +19,12 @@ class CategoryFilterResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'type' => $this->type,
-            'is_filterable' => (bool) $this->is_filterable,
-            'is_required' => (bool) (
-                $this->pivot?->is_required ?? $this->is_required
-            ),
+
+            'is_filterable' => (bool) $this->pivot?->is_filterable,
+
+            'is_required' => (bool) $this->pivot?->is_required,
+
+            'is_variant_axis' => (bool) $this->pivot?->is_variant_axis,
 
             'values' => $this->values->map(function ($value) {
                 return [

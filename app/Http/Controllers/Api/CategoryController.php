@@ -3,31 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Category;
-use Illuminate\Http\JsonResponse;
+use App\Http\Resources\CategoryTreeResource;
+use App\Services\CategoryTreeService;
 
 class CategoryController extends Controller
 {
-    /**
-     * Get active root categories with children.
-     */
-    public function index(): JsonResponse
-    {
-        $categories = Category::query()
-            ->whereNull('parent_id')
-            ->where('is_active', true)
-            ->with([
-                'children' => function ($query) {
-                    $query
-                        ->where('is_active', true)
-                        ->orderBy('sort_order');
-                },
-            ])
-            ->orderBy('sort_order')
-            ->get();
+    public function __construct(
+        private readonly CategoryTreeService $categoryTree
+    ) {
+    }
 
-        return response()->json([
-            'data' => $categories,
-        ]);
+    /**
+     * Get the active category tree with no depth limit.
+     */
+    public function index()
+    {
+        return CategoryTreeResource::collection(
+            $this->categoryTree->tree()
+        );
     }
 }
