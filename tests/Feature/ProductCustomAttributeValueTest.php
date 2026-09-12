@@ -97,12 +97,23 @@ class ProductCustomAttributeValueTest extends TestCase
     public function test_admin_product_api_stores_a_number_custom_value(): void
     {
         $this->authenticate();
+        $category = Category::create([
+            'name' => 'Cooling system',
+            'slug' => 'cooling-system',
+            'is_active' => true,
+        ]);
         $weight = $this->attribute('Weight', 'weight', 'number');
+        $category->attributes()->attach($weight->id, [
+            'is_filterable' => false,
+            'is_required' => false,
+            'is_variant_axis' => false,
+        ]);
 
         $this->postJson('/api/admin/products', [
             'name' => 'Water pump',
             'slug' => 'water-pump',
             'price' => 100,
+            'category_ids' => [$category->id],
             'custom_attribute_values' => [[
                 'attribute_id' => $weight->id,
                 'value' => 1.75,
@@ -114,6 +125,30 @@ class ProductCustomAttributeValueTest extends TestCase
             'value_type' => 'number',
             'value_number' => 1.75,
         ]);
+    }
+
+    public function test_admin_product_api_rejects_custom_values_not_effective_for_the_category(): void
+    {
+        $this->authenticate();
+        $category = Category::create([
+            'name' => 'Brake system',
+            'slug' => 'brake-system',
+            'is_active' => true,
+        ]);
+        $weight = $this->attribute('Weight', 'weight', 'number');
+
+        $this->postJson('/api/admin/products', [
+            'name' => 'Brake disc',
+            'slug' => 'brake-disc',
+            'price' => 100,
+            'category_ids' => [$category->id],
+            'custom_attribute_values' => [[
+                'attribute_id' => $weight->id,
+                'value' => 7.2,
+            ]],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('custom_attribute_values.0.value');
     }
 
     private function attribute(string $name, string $slug, string $type): Attribute

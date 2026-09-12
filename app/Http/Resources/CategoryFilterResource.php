@@ -26,6 +26,8 @@ class CategoryFilterResource extends JsonResource
 
             'is_variant_axis' => (bool) $this->pivot?->is_variant_axis,
 
+            'sort_order' => (int) $this->pivot?->sort_order,
+
             'values' => $this->values->map(function ($value) {
                 return [
                     'id' => $value->id,

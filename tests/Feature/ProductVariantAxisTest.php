@@ -100,6 +100,61 @@ class ProductVariantAxisTest extends TestCase
         ])->assertCreated();
     }
 
+    public function test_product_values_must_belong_to_an_effective_category_attribute(): void
+    {
+        $this->authenticate();
+
+        $category = Category::create([
+            'name' => 'Brake system',
+            'slug' => 'brake-system',
+            'is_active' => true,
+        ]);
+        $brand = Attribute::create([
+            'name' => 'Brand',
+            'slug' => 'brand',
+            'type' => 'select',
+        ]);
+        $material = Attribute::create([
+            'name' => 'Material',
+            'slug' => 'material',
+            'type' => 'select',
+        ]);
+        $brembo = AttributeValue::create([
+            'attribute_id' => $brand->id,
+            'label' => 'Brembo',
+            'value' => 'brembo',
+        ]);
+        $ceramic = AttributeValue::create([
+            'attribute_id' => $material->id,
+            'label' => 'Ceramic',
+            'value' => 'ceramic',
+        ]);
+
+        $category->attributes()->attach($brand->id, [
+            'is_filterable' => true,
+            'is_required' => false,
+            'is_variant_axis' => false,
+        ]);
+
+        $this->postJson('/api/admin/products', [
+            'name' => 'Brake pad',
+            'slug' => 'brake-pad',
+            'price' => 100,
+            'category_ids' => [$category->id],
+            'attribute_value_ids' => [$ceramic->id],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('attribute_value_ids');
+
+        $this->postJson('/api/admin/products', [
+            'name' => 'Brembo brake pad',
+            'slug' => 'brembo-brake-pad',
+            'price' => 100,
+            'category_ids' => [$category->id],
+            'attribute_value_ids' => [$brembo->id],
+        ])->assertCreated();
+    }
+
     private function authenticate(): void
     {
         Sanctum::actingAs(User::factory()->create([

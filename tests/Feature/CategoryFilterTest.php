@@ -64,6 +64,7 @@ class CategoryFilterTest extends TestCase
             ->assertJsonPath('data.0.is_filterable', true)
             ->assertJsonPath('data.0.is_required', true)
             ->assertJsonPath('data.0.is_variant_axis', true)
+            ->assertJsonPath('data.0.sort_order', 2)
             ->assertJsonPath('data.0.values.0.label', 'Brembo');
     }
 }

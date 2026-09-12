@@ -57,8 +57,13 @@ class AdminProductController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateProduct($request);
+        $this->validateProductAttributeValues(
+            $data['attribute_value_ids'] ?? [],
+            $data['category_ids'] ?? []
+        );
         $this->validateCustomAttributeValues(
-            $data['custom_attribute_values'] ?? []
+            $data['custom_attribute_values'] ?? [],
+            $data['category_ids'] ?? []
         );
         $this->validateVariantAttributeValues(
             $data['variants'] ?? [],
@@ -133,8 +138,13 @@ class AdminProductController extends Controller
             $request,
             $product
         );
+        $this->validateProductAttributeValues(
+            $data['attribute_value_ids'] ?? [],
+            $data['category_ids'] ?? []
+        );
         $this->validateCustomAttributeValues(
-            $data['custom_attribute_values'] ?? []
+            $data['custom_attribute_values'] ?? [],
+            $data['category_ids'] ?? []
         );
         $this->validateVariantAttributeValues(
             $data['variants'] ?? [],
@@ -437,7 +447,39 @@ class AdminProductController extends Controller
         }
     }
 
-    protected function validateCustomAttributeValues(array $customAttributeValues): void
+    protected function validateProductAttributeValues(
+        array $attributeValueIds,
+        array $categoryIds
+    ): void {
+        if ($attributeValueIds === []) {
+            return;
+        }
+
+        $allowedAttributeIds = $this->effectiveAttributeIdsForCategories(
+            $categoryIds
+        );
+
+        $attributeValues = AttributeValue::query()
+            ->whereIn('id', $attributeValueIds)
+            ->get(['id', 'attribute_id']);
+
+        if ($attributeValues->contains(
+            fn (AttributeValue $value) => ! $allowedAttributeIds->contains(
+                $value->attribute_id
+            )
+        )) {
+            throw ValidationException::withMessages([
+                'attribute_value_ids' => [
+                    'Product values must belong to an effective category attribute.',
+                ],
+            ]);
+        }
+    }
+
+    protected function validateCustomAttributeValues(
+        array $customAttributeValues,
+        array $categoryIds
+    ): void
     {
         if ($customAttributeValues === []) {
             return;
@@ -451,6 +493,10 @@ class AdminProductController extends Controller
             ->get()
             ->keyBy('id');
 
+        $allowedAttributeIds = $this->effectiveAttributeIdsForCategories(
+            $categoryIds
+        );
+
         foreach ($customAttributeValues as $index => $valueData) {
             $attribute = $attributes->get($valueData['attribute_id']);
             $value = $valueData['value'];
@@ -463,6 +509,14 @@ class AdminProductController extends Controller
             )) {
                 throw ValidationException::withMessages([
                     $key => ['Only number, boolean, and text attributes accept custom values.'],
+                ]);
+            }
+
+            if (! $allowedAttributeIds->contains($attribute->id)) {
+                throw ValidationException::withMessages([
+                    $key => [
+                        'Custom values must belong to an effective category attribute.',
+                    ],
                 ]);
             }
 
@@ -488,6 +542,24 @@ class AdminProductController extends Controller
                 ]);
             }
         }
+    }
+
+    protected function effectiveAttributeIdsForCategories(array $categoryIds)
+    {
+        if ($categoryIds === []) {
+            return collect();
+        }
+
+        return Category::query()
+            ->whereIn('id', $categoryIds)
+            ->get()
+            ->flatMap(
+                fn (Category $category) => $this->effectiveAttributes
+                    ->for($category)
+                    ->pluck('id')
+            )
+            ->unique()
+            ->values();
     }
 
     protected function validateVariantAttributeValues(
