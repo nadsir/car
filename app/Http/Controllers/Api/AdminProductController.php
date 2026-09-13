@@ -184,13 +184,6 @@ class AdminProductController extends Controller
                 $customAttributeValues
             );
 
-            /*
-             * فعلاً Variantها از نو ساخته می‌شوند.
-             * در مرحله بعدی که مدیریت Variant Image را اضافه کنیم،
-             * این بخش را تغییر می‌دهیم تا ID و تصاویر Variantها حفظ شوند.
-             */
-            $product->variants()->delete();
-
             $this->syncVariants(
                 $product,
                 $variants
@@ -617,7 +610,9 @@ class AdminProductController extends Controller
             ->keyBy('id');
 
         foreach ($variants as $index => $variant) {
-            foreach ($variant['attribute_value_ids'] ?? [] as $valueId) {
+            $valueIds = $variant['attribute_value_ids'] ?? [];
+
+            foreach ($valueIds as $valueId) {
                 $attributeValue = $attributeValues->get((int) $valueId);
 
                 if (
@@ -632,6 +627,35 @@ class AdminProductController extends Controller
                     ]);
                 }
             }
+
+            if ($allowedAttributeIds !== null && $allowedAttributeIds->isNotEmpty()) {
+                $usedAxisIds = collect($valueIds)
+                    ->map(fn ($id) => $attributeValues->get((int) $id)?->attribute_id)
+                    ->filter()
+                    ->values();
+
+                $duplicateAxes = $usedAxisIds->duplicates();
+
+                if ($duplicateAxes->isNotEmpty()) {
+                    $duplicateAxisId = $duplicateAxes->first();
+
+                    throw ValidationException::withMessages([
+                        "variants.{$index}.attribute_value_ids" => [
+                            "Attribute \"{$duplicateAxisId}\" has more than one value. Each variant axis must have exactly one value.",
+                        ],
+                    ]);
+                }
+
+                $missingAxes = $allowedAttributeIds->diff($usedAxisIds);
+
+                if ($missingAxes->isNotEmpty()) {
+                    throw ValidationException::withMessages([
+                        "variants.{$index}.attribute_value_ids" => [
+                            "Missing required variant axis(es): " . $missingAxes->implode(', ') . ". Each variant must have a value for every variant axis.",
+                        ],
+                    ]);
+                }
+            }
         }
     }
 
@@ -639,6 +663,12 @@ class AdminProductController extends Controller
         Product $product,
         array $variants
     ): void {
+        $existingByKey = $product->variants()
+            ->get()
+            ->keyBy('combination_key');
+
+        $processedKeys = [];
+
         foreach ($variants as $variantData) {
             $variantValueIds =
                 $variantData['attribute_value_ids'] ?? [];
@@ -654,13 +684,11 @@ class AdminProductController extends Controller
                 ->values()
                 ->all();
 
-            $variantData['combination_key'] =
+            $combinationKey =
                 implode('-', $uniqueValueIds);
 
-            if (
-                $variantData['combination_key'] === ''
-            ) {
-                $variantData['combination_key'] =
+            if ($combinationKey === '') {
+                $combinationKey =
                     !empty($variantData['sku'])
                         ? 'sku-' . $variantData['sku']
                         : uniqid(
@@ -669,16 +697,47 @@ class AdminProductController extends Controller
                         );
             }
 
-            $variant =
-                $product->variants()->create(
-                    $variantData
+            $variantData['combination_key'] =
+                $combinationKey;
+
+            $existing = $existingByKey->get(
+                $combinationKey
+            );
+
+            if ($existing) {
+                $existing->update(
+                    collect($variantData)
+                        ->except('combination_key')
+                        ->toArray()
                 );
 
-            if (!empty($uniqueValueIds)) {
-                $variant->attributeValues()->sync(
+                $existing->attributeValues()->sync(
                     $uniqueValueIds
                 );
+            } else {
+                $variant =
+                    $product->variants()->create(
+                        $variantData
+                    );
+
+                if (!empty($uniqueValueIds)) {
+                    $variant->attributeValues()->sync(
+                        $uniqueValueIds
+                    );
+                }
             }
+
+            $processedKeys[] = $combinationKey;
         }
+
+        $existingByKey
+            ->filter(
+                fn ($variant) => ! in_array(
+                    $variant->combination_key,
+                    $processedKeys,
+                    true
+                )
+            )
+            ->each->delete();
     }
 }
