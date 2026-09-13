@@ -8,6 +8,7 @@ use App\Models\AttributeValue;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductCustomAttributeValue;
+use App\Models\ProductVariant;
 use App\Services\EffectiveCategoryAttributesResolver;
 use App\Services\CategoryTreeService;
 use Illuminate\Http\Request;
@@ -68,6 +69,10 @@ class AdminProductController extends Controller
         $this->validateVariantAttributeValues(
             $data['variants'] ?? [],
             $data['category_ids'] ?? []
+        );
+        $this->validateVariantSkus(
+            $data['variants'] ?? [],
+            null
         );
 
         return DB::transaction(function () use ($data) {
@@ -149,6 +154,10 @@ class AdminProductController extends Controller
         $this->validateVariantAttributeValues(
             $data['variants'] ?? [],
             $data['category_ids'] ?? []
+        );
+        $this->validateVariantSkus(
+            $data['variants'] ?? [],
+            $product
         );
 
         return DB::transaction(function () use (
@@ -656,6 +665,58 @@ class AdminProductController extends Controller
                     ]);
                 }
             }
+        }
+    }
+
+    protected function validateVariantSkus(
+        array $variants,
+        ?Product $product
+    ): void {
+        $skuVariants = collect($variants)
+            ->filter(fn (array $v) => ! empty($v['sku']))
+            ->values();
+
+        if ($skuVariants->isEmpty()) {
+            return;
+        }
+
+        $requestSkus = $skuVariants
+            ->pluck('sku')
+            ->values();
+
+        $duplicates = $requestSkus->duplicates();
+
+        if ($duplicates->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'variants' => [
+                    'Duplicate SKU "' . $duplicates->first() . '" found in variants.',
+                ],
+            ]);
+        }
+
+        $existingByKey = $product
+            ? $product->variants()
+                ->get()
+                ->keyBy('combination_key')
+            : collect();
+
+        $skuList = $requestSkus->all();
+
+        $conflict = ProductVariant::query()
+            ->whereIn('sku', $skuList)
+            ->get(['id', 'sku', 'combination_key'])
+            ->first(function (ProductVariant $dbVariant) use ($existingByKey) {
+                $existing = $existingByKey->get($dbVariant->combination_key);
+
+                return ! $existing || $existing->id !== $dbVariant->id;
+            });
+
+        if ($conflict) {
+            throw ValidationException::withMessages([
+                'variants' => [
+                    'SKU "' . $conflict->sku . '" is already in use by another variant.',
+                ],
+            ]);
         }
     }
 

@@ -76,20 +76,14 @@ class ProductResource extends JsonResource
                 })
                 ->values(),
 
-                'in_stock' => $this->variants->isNotEmpty()
-                ? $this->variants->where('is_active', true)->sum('stock') > 0
-                : $this->stock > 0,
+                'in_stock' => $this->in_stock,
 
             'variants' => $this->variants->map(function ($variant) {
                 return [
                     'id' => $variant->id,
                     'sku' => $variant->sku,
-                    'price' => $variant->price !== null
-                        ? (float) $variant->price
-                        : null,
-                    'compare_at_price' => $variant->compare_at_price !== null
-                        ? (float) $variant->compare_at_price
-                        : null,
+                    'price' => (float) $variant->effective_price,
+                    'compare_at_price' => $variant->effective_compare_at_price,
                     'stock' => $variant->stock,
                     'is_active' => (bool) $variant->is_active,
 

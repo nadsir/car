@@ -37,6 +37,23 @@ class Product extends Model
     ];
 
     /**
+     * Resolved stock availability.
+     *
+     * Without variants: product.stock.
+     * With variants: sum of active variant stock.
+     */
+    public function getInStockAttribute(): bool
+    {
+        if ($this->variants->isEmpty()) {
+            return $this->stock > 0;
+        }
+
+        return $this->variants
+            ->where('is_active', true)
+            ->sum('stock') > 0;
+    }
+
+    /**
      * Categories
      */
     public function categories(): BelongsToMany

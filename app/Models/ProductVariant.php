@@ -30,6 +30,24 @@ class ProductVariant extends Model
     ];
 
     /**
+     * Resolved price: variant price falls back to product price.
+     */
+    public function getEffectivePriceAttribute(): float
+    {
+        return (float) ($this->price ?? $this->product->price);
+    }
+
+    /**
+     * Resolved compare_at_price: variant falls back to product.
+     */
+    public function getEffectiveCompareAtPriceAttribute(): ?float
+    {
+        $value = $this->compare_at_price ?? $this->product->compare_at_price;
+
+        return $value !== null ? (float) $value : null;
+    }
+
+    /**
      * Product
      */
     public function product(): BelongsTo
