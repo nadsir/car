@@ -130,6 +130,7 @@ class AdminProductController extends Controller
             'customAttributeValues.attribute',
             'variants.attributeValues.attribute',
             'images',
+            'vehicleEngines.trim.generation.model.brand',
         ]);
 
         return response()->json($product);
@@ -700,23 +701,38 @@ class AdminProductController extends Controller
                 ->keyBy('combination_key')
             : collect();
 
-        $skuList = $requestSkus->all();
+        foreach ($skuVariants as $requestVariant) {
+            $sku = $requestVariant['sku'];
 
-        $conflict = ProductVariant::query()
-            ->whereIn('sku', $skuList)
-            ->get(['id', 'sku', 'combination_key'])
-            ->first(function (ProductVariant $dbVariant) use ($existingByKey) {
-                $existing = $existingByKey->get($dbVariant->combination_key);
+            $valueIds = collect(
+                $requestVariant['attribute_value_ids'] ?? []
+            )
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->sort()
+                ->values()
+                ->all();
 
-                return ! $existing || $existing->id !== $dbVariant->id;
-            });
+            $comboKey = implode('-', $valueIds);
 
-        if ($conflict) {
-            throw ValidationException::withMessages([
-                'variants' => [
-                    'SKU "' . $conflict->sku . '" is already in use by another variant.',
-                ],
-            ]);
+            $query = ProductVariant::where('sku', $sku);
+
+            if ($product && $comboKey !== '') {
+                $existing = $existingByKey->get($comboKey);
+
+                if ($existing) {
+                    $query->where('id', '!=', $existing->id);
+                }
+            }
+
+            if ($query->exists()) {
+                throw ValidationException::withMessages([
+                    'variants' => [
+                        'SKU "' . $sku
+                            . '" is already in use by another variant.',
+                    ],
+                ]);
+            }
         }
     }
 

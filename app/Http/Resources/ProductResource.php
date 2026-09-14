@@ -76,6 +76,41 @@ class ProductResource extends JsonResource
                 })
                 ->values(),
 
+            'vehicle_compatibility' => $this->vehicleEngines
+                ->map(function ($engine) {
+                    $trim = $engine->trim;
+                    $generation = $trim->generation;
+                    $model = $generation->model;
+                    $brand = $model->brand;
+
+                    return [
+                        'engine' => [
+                            'id' => $engine->id,
+                            'name' => $engine->name,
+                            'slug' => $engine->slug,
+                        ],
+                        'trim' => [
+                            'id' => $trim->id,
+                            'name' => $trim->name,
+                        ],
+                        'generation' => [
+                            'id' => $generation->id,
+                            'name' => $generation->name,
+                            'year_start' => $generation->year_start,
+                            'year_end' => $generation->year_end,
+                        ],
+                        'model' => [
+                            'id' => $model->id,
+                            'name' => $model->name,
+                        ],
+                        'brand' => [
+                            'id' => $brand->id,
+                            'name' => $brand->name,
+                        ],
+                    ];
+                })
+                ->values(),
+
                 'in_stock' => $this->in_stock,
 
             'variants' => $this->variants->map(function ($variant) {

@@ -111,4 +111,15 @@ class Product extends Model
             ->where('is_primary', true)
             ->orderBy('sort_order');
     }
+
+    /**
+     * Compatible vehicle engines
+     */
+    public function vehicleEngines(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            VehicleEngine::class,
+            'product_vehicle_compat'
+        )->withTimestamps();
+    }
 }

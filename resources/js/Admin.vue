@@ -43,14 +43,43 @@ import {
     removeAttribute,
     createAttributeValue,
     updateAttributeValue,
-    removeAttributeValue
+    removeAttributeValue,
+    loadAdminBrands,
+    createBrand,
+    updateBrand,
+    deleteBrand,
+    loadAdminModels,
+    createModel,
+    updateModel,
+    deleteModel,
+    loadAdminGenerations,
+    createGeneration,
+    updateGeneration,
+    deleteGeneration,
+    loadAdminTrims,
+    createTrim,
+    updateTrim,
+    deleteTrim,
+    loadAdminEngines,
+    createEngine,
+    updateEngine,
+    deleteEngine,
+    loadBrands,
+    loadBrandModels,
+    loadModelGenerations,
+    loadGenerationTrims,
+    loadTrimEngines,
+    loadProductCompatibility,
+    attachProductCompatibility,
+    detachProductCompatibility,
 } from './admin-state';
 
 
 async function openEditProduct(id) {
     try {
         await loadProduct(id);
-
+        await loadCompat(id);
+        await initCompatSelectors();
         showProductModal.value = true;
     } catch (error) {
         console.error('Failed to load product:', error);
@@ -90,6 +119,44 @@ const attributeValueEditingId = ref(null);
 const attributeValueSaving = ref(false);
 const attributeValueForm = ref(createEmptyAttributeValueForm());
 
+// ── Vehicle Management State ──────────────────────────────────
+const vehicleBrands = ref([]);
+const vehicleModels = ref([]);
+const vehicleGenerations = ref([]);
+const vehicleTrims = ref([]);
+const vehicleEngines = ref([]);
+
+const selectedBrandId = ref(null);
+const selectedModelId = ref(null);
+const selectedGenerationId = ref(null);
+const selectedTrimId = ref(null);
+
+const vehicleLoading = ref(false);
+const vehicleSaving = ref(false);
+const vehicleError = ref('');
+
+const vehicleForm = ref(createEmptyVehicleForm());
+const vehicleEditingId = ref(null);
+const vehicleLevel = ref('brands');
+
+function createEmptyVehicleForm() {
+    return { name: '', slug: '', is_active: true, year_start: null, year_end: null, displacement: null, fuel_type: '', horsepower: null };
+}
+
+// ── Vehicle Product Compat State ──────────────────────────────
+const productCompat = ref([]);
+const compatLoading = ref(false);
+const compatBrands = ref([]);
+const compatModels = ref([]);
+const compatGenerations = ref([]);
+const compatTrims = ref([]);
+const compatEngines = ref([]);
+const compatSelectedBrand = ref(null);
+const compatSelectedModel = ref(null);
+const compatSelectedGeneration = ref(null);
+const compatSelectedTrim = ref(null);
+const compatSelectedEngine = ref(null);
+
 /*
 |--------------------------------------------------------------------------
 | Navigation
@@ -116,6 +183,11 @@ const nav = [
         key: 'attributes',
         label: 'ویژگی‌ها',
         icon: '◇',
+    },
+    {
+        key: 'vehicles',
+        label: 'خودروها',
+        icon: '◀',
     },
     {
         key: 'users',
@@ -956,10 +1028,6 @@ function closeProductModal() {
     showProductModal.value = false;
 }
 
-function changeSection(value) {
-    section.value = value;
-}
-
 async function submitProduct() {
     errorMessage.value = '';
     successMessage.value = '';
@@ -1047,11 +1115,317 @@ async function submitLogin() {
     }
 }
 
+/*
+|--------------------------------------------------------------------------
+| Vehicle Management
+|--------------------------------------------------------------------------
+*/
+
+async function loadVehicleBrands() {
+    vehicleLoading.value = true;
+    vehicleError.value = '';
+    try {
+        vehicleBrands.value = await loadAdminBrands();
+    } catch (e) {
+        vehicleError.value = 'دریافت برندها انجام نشد.';
+    } finally {
+        vehicleLoading.value = false;
+    }
+}
+
+async function selectBrand(brandId) {
+    selectedBrandId.value = brandId;
+    selectedModelId.value = null;
+    selectedGenerationId.value = null;
+    selectedTrimId.value = null;
+    vehicleModels.value = [];
+    vehicleGenerations.value = [];
+    vehicleTrims.value = [];
+    vehicleEngines.value = [];
+    vehicleLevel.value = 'models';
+    if (!brandId) return;
+    vehicleLoading.value = true;
+    try {
+        vehicleModels.value = await loadAdminModels(brandId);
+    } catch (e) {
+        vehicleError.value = 'دریافت مدل‌ها انجام نشد.';
+    } finally {
+        vehicleLoading.value = false;
+    }
+}
+
+async function selectModel(modelId) {
+    selectedModelId.value = modelId;
+    selectedGenerationId.value = null;
+    selectedTrimId.value = null;
+    vehicleGenerations.value = [];
+    vehicleTrims.value = [];
+    vehicleEngines.value = [];
+    vehicleLevel.value = 'generations';
+    if (!modelId) return;
+    vehicleLoading.value = true;
+    try {
+        vehicleGenerations.value = await loadAdminGenerations(selectedBrandId.value, modelId);
+    } catch (e) {
+        vehicleError.value = 'دریافت نسل‌ها انجام نشد.';
+    } finally {
+        vehicleLoading.value = false;
+    }
+}
+
+async function selectGeneration(genId) {
+    selectedGenerationId.value = genId;
+    selectedTrimId.value = null;
+    vehicleTrims.value = [];
+    vehicleEngines.value = [];
+    vehicleLevel.value = 'trims';
+    if (!genId) return;
+    vehicleLoading.value = true;
+    try {
+        vehicleTrims.value = await loadAdminTrims(selectedBrandId.value, selectedModelId.value, genId);
+    } catch (e) {
+        vehicleError.value = 'دریافت تیپ‌ها انجام نشد.';
+    } finally {
+        vehicleLoading.value = false;
+    }
+}
+
+async function selectTrim(trimId) {
+    selectedTrimId.value = trimId;
+    vehicleEngines.value = [];
+    vehicleLevel.value = 'engines';
+    if (!trimId) return;
+    vehicleLoading.value = true;
+    try {
+        vehicleEngines.value = await loadAdminEngines(selectedBrandId.value, selectedModelId.value, selectedGenerationId.value, trimId);
+    } catch (e) {
+        vehicleError.value = 'دریافت موتورها انجام نشد.';
+    } finally {
+        vehicleLoading.value = false;
+    }
+}
+
+function openVehicleForm(level, item = null) {
+    vehicleLevel.value = level;
+    vehicleEditingId.value = item ? item.id : null;
+    if (item) {
+        vehicleForm.value = {
+            name: item.name || '',
+            slug: item.slug || '',
+            is_active: Boolean(item.is_active),
+            year_start: item.year_start ?? null,
+            year_end: item.year_end ?? null,
+            displacement: item.displacement ?? null,
+            fuel_type: item.fuel_type || '',
+            horsepower: item.horsepower ?? null,
+        };
+    } else {
+        vehicleForm.value = createEmptyVehicleForm();
+    }
+    vehicleError.value = '';
+}
+
+async function submitVehicle() {
+    vehicleSaving.value = true;
+    vehicleError.value = '';
+    try {
+        const level = vehicleLevel.value;
+        const data = { ...vehicleForm.value };
+        if (level === 'brands') {
+            if (vehicleEditingId.value) {
+                await updateBrand(vehicleEditingId.value, data);
+            } else {
+                await createBrand(data);
+            }
+            await loadVehicleBrands();
+        } else if (level === 'models') {
+            if (vehicleEditingId.value) {
+                await updateModel(selectedBrandId.value, vehicleEditingId.value, data);
+            } else {
+                await createModel(selectedBrandId.value, data);
+            }
+            await selectBrand(selectedBrandId.value);
+        } else if (level === 'generations') {
+            if (vehicleEditingId.value) {
+                await updateGeneration(selectedBrandId.value, selectedModelId.value, vehicleEditingId.value, data);
+            } else {
+                await createGeneration(selectedBrandId.value, selectedModelId.value, data);
+            }
+            await selectModel(selectedModelId.value);
+        } else if (level === 'trims') {
+            if (vehicleEditingId.value) {
+                await updateTrim(selectedBrandId.value, selectedModelId.value, selectedGenerationId.value, vehicleEditingId.value, data);
+            } else {
+                await createTrim(selectedBrandId.value, selectedModelId.value, selectedGenerationId.value, data);
+            }
+            await selectGeneration(selectedGenerationId.value);
+        } else if (level === 'engines') {
+            if (vehicleEditingId.value) {
+                await updateEngine(selectedBrandId.value, selectedModelId.value, selectedGenerationId.value, selectedTrimId.value, vehicleEditingId.value, data);
+            } else {
+                await createEngine(selectedBrandId.value, selectedModelId.value, selectedGenerationId.value, selectedTrimId.value, data);
+            }
+            await selectTrim(selectedTrimId.value);
+        }
+        vehicleEditingId.value = null;
+        vehicleForm.value = createEmptyVehicleForm();
+    } catch (e) {
+        const errors = e.response?.data?.errors;
+        vehicleError.value = errors ? Object.values(errors).flat().join(' ') : 'ذخیره انجام نشد.';
+    } finally {
+        vehicleSaving.value = false;
+    }
+}
+
+async function deleteVehicleItem(level, id) {
+    if (!confirm('آیا مطمئن هستید؟')) return;
+    vehicleError.value = '';
+    try {
+        if (level === 'brands') {
+            await deleteBrand(id);
+            await loadVehicleBrands();
+        } else if (level === 'models') {
+            await deleteModel(selectedBrandId.value, id);
+            await selectBrand(selectedBrandId.value);
+        } else if (level === 'generations') {
+            await deleteGeneration(selectedBrandId.value, selectedModelId.value, id);
+            await selectModel(selectedModelId.value);
+        } else if (level === 'trims') {
+            await deleteTrim(selectedBrandId.value, selectedModelId.value, selectedGenerationId.value, id);
+            await selectGeneration(selectedGenerationId.value);
+        } else if (level === 'engines') {
+            await deleteEngine(selectedBrandId.value, selectedModelId.value, selectedGenerationId.value, selectedTrimId.value, id);
+            await selectTrim(selectedTrimId.value);
+        }
+    } catch (e) {
+        const errors = e.response?.data?.errors;
+        vehicleError.value = errors ? Object.values(errors).flat().join(' ') : 'حذف انجام نشد.';
+    }
+}
+
+function vehicleFormLabel() {
+    const labels = { brands: 'برند', models: 'مدل', generations: 'نسل', trims: 'تیپ', engines: 'موتور' };
+    return labels[vehicleLevel.value] || '';
+}
+
+/*
+|--------------------------------------------------------------------------
+| Product Vehicle Compatibility
+|--------------------------------------------------------------------------
+*/
+
+async function loadCompat(productId) {
+    compatLoading.value = true;
+    try {
+        productCompat.value = await loadProductCompatibility(productId);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        compatLoading.value = false;
+    }
+}
+
+async function initCompatSelectors() {
+    try {
+        compatBrands.value = await loadBrands();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function compatSelectBrand(brandId) {
+    compatSelectedBrand.value = brandId;
+    compatSelectedModel.value = null;
+    compatSelectedGeneration.value = null;
+    compatSelectedTrim.value = null;
+    compatSelectedEngine.value = null;
+    compatModels.value = [];
+    compatGenerations.value = [];
+    compatTrims.value = [];
+    compatEngines.value = [];
+    if (!brandId) return;
+    compatModels.value = await loadBrandModels(brandId);
+}
+
+async function compatSelectModel(modelId) {
+    compatSelectedModel.value = modelId;
+    compatSelectedGeneration.value = null;
+    compatSelectedTrim.value = null;
+    compatSelectedEngine.value = null;
+    compatGenerations.value = [];
+    compatTrims.value = [];
+    compatEngines.value = [];
+    if (!modelId) return;
+    compatGenerations.value = await loadModelGenerations(modelId);
+}
+
+async function compatSelectGeneration(genId) {
+    compatSelectedGeneration.value = genId;
+    compatSelectedTrim.value = null;
+    compatSelectedEngine.value = null;
+    compatTrims.value = [];
+    compatEngines.value = [];
+    if (!genId) return;
+    compatTrims.value = await loadGenerationTrims(genId);
+}
+
+async function compatSelectTrim(trimId) {
+    compatSelectedTrim.value = trimId;
+    compatSelectedEngine.value = null;
+    compatEngines.value = [];
+    if (!trimId) return;
+    compatEngines.value = await loadTrimEngines(trimId);
+}
+
+function isEngineAlreadyCompat(engineId) {
+    return productCompat.value.some(c => c.engine.id === engineId);
+}
+
+async function addCompat(productId) {
+    if (!compatSelectedEngine.value) return;
+    if (isEngineAlreadyCompat(compatSelectedEngine.value)) return;
+    try {
+        await attachProductCompatibility(productId, [compatSelectedEngine.value]);
+        await loadCompat(productId);
+        compatSelectedBrand.value = null;
+        compatSelectedModel.value = null;
+        compatSelectedGeneration.value = null;
+        compatSelectedTrim.value = null;
+        compatSelectedEngine.value = null;
+        compatModels.value = [];
+        compatGenerations.value = [];
+        compatTrims.value = [];
+        compatEngines.value = [];
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function removeCompat(productId, engineId) {
+    try {
+        await detachProductCompatibility(productId, engineId);
+        await loadCompat(productId);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function compatSummary(item) {
+    return `${item.brand.name} › ${item.model.name} › ${item.generation.name} ${item.generation.year_start || ''}${item.generation.year_end ? '-' + item.generation.year_end : ''} › ${item.trim.name} › ${item.engine.name}`;
+}
+
 async function signOut() {
     await logout();
     resetForm();
     errorMessage.value = '';
     successMessage.value = '';
+}
+
+async function changeSection(value) {
+    section.value = value;
+    if (value === 'vehicles') {
+        loadVehicleBrands();
+    }
 }
 
 onMounted(async () => {
@@ -1498,17 +1872,22 @@ onMounted(async () => {
                                     }}
                                 </span>
 
-                                <button
-                                    type="button"
-                                    class="delete-button"
-                                    @click="
-                                        deleteProduct(
-                                            product.id
-                                        )
-                                    "
-                                >
-                                    حذف
-                                </button>
+                                <div class="product-actions">
+                                    <button
+                                        type="button"
+                                        class="btn-edit"
+                                        @click="openEditProduct(product.id)"
+                                    >
+                                        ویرایش
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn-delete"
+                                        @click="deleteProduct(product.id)"
+                                    >
+                                        حذف
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -1997,6 +2376,327 @@ onMounted(async () => {
                                     </div>
                                 </div>
                             </template>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================================================= -->
+                <!-- VEHICLES -->
+                <!-- ================================================= -->
+
+                <section
+                    v-else-if="section === 'vehicles'"
+                >
+                    <div class="panel">
+                        <div class="panel-head">
+                            <div>
+                                <p class="section-label">
+                                    مدیریت خودرو
+                                </p>
+
+                                <h2>
+                                    خودروها
+                                </h2>
+                            </div>
+
+                            <button
+                                v-if="vehicleLevel === 'brands'"
+                                type="button"
+                                class="primary"
+                                @click="openVehicleForm('brands')"
+                            >
+                                + برند جدید
+                            </button>
+                            <button
+                                v-else-if="vehicleLevel === 'models'"
+                                type="button"
+                                class="primary"
+                                @click="openVehicleForm('models')"
+                            >
+                                + مدل جدید
+                            </button>
+                            <button
+                                v-else-if="vehicleLevel === 'generations'"
+                                type="button"
+                                class="primary"
+                                @click="openVehicleForm('generations')"
+                            >
+                                + نسل جدید
+                            </button>
+                            <button
+                                v-else-if="vehicleLevel === 'trims'"
+                                type="button"
+                                class="primary"
+                                @click="openVehicleForm('trims')"
+                            >
+                                + تیپ جدید
+                            </button>
+                            <button
+                                v-else-if="vehicleLevel === 'engines'"
+                                type="button"
+                                class="primary"
+                                @click="openVehicleForm('engines')"
+                            >
+                                + موتور جدید
+                            </button>
+                        </div>
+
+                        <!-- ERROR -->
+                        <div v-if="vehicleError" class="alert error">
+                            {{ vehicleError }}
+                        </div>
+
+                        <!-- BREADCRUMB -->
+                        <div class="vehicle-breadcrumb">
+                            <button
+                                type="button"
+                                class="text-button"
+                                :class="{ active: vehicleLevel === 'brands' }"
+                                @click="vehicleLevel = 'brands'; selectedBrandId = null; selectedModelId = null; selectedGenerationId = null; selectedTrimId = null; loadVehicleBrands()"
+                            >
+                                برندها
+                            </button>
+                            <template v-if="selectedBrandId">
+                                <span class="bc-sep">‹</span>
+                                <button
+                                    type="button"
+                                    class="text-button"
+                                    :class="{ active: vehicleLevel === 'models' }"
+                                    @click="selectBrand(selectedBrandId)"
+                                >
+                                    {{ vehicleBrands.find(b => b.id === selectedBrandId)?.name || 'مدل‌ها' }}
+                                </button>
+                            </template>
+                            <template v-if="selectedModelId">
+                                <span class="bc-sep">‹</span>
+                                <button
+                                    type="button"
+                                    class="text-button"
+                                    :class="{ active: vehicleLevel === 'generations' }"
+                                    @click="selectModel(selectedModelId)"
+                                >
+                                    {{ vehicleModels.find(m => m.id === selectedModelId)?.name || 'نسل‌ها' }}
+                                </button>
+                            </template>
+                            <template v-if="selectedGenerationId">
+                                <span class="bc-sep">‹</span>
+                                <button
+                                    type="button"
+                                    class="text-button"
+                                    :class="{ active: vehicleLevel === 'trims' }"
+                                    @click="selectGeneration(selectedGenerationId)"
+                                >
+                                    {{ vehicleGenerations.find(g => g.id === selectedGenerationId)?.name || 'تیپ‌ها' }}
+                                </button>
+                            </template>
+                            <template v-if="selectedTrimId">
+                                <span class="bc-sep">‹</span>
+                                <button
+                                    type="button"
+                                    class="text-button active"
+                                    @click="selectTrim(selectedTrimId)"
+                                >
+                                    {{ vehicleTrims.find(t => t.id === selectedTrimId)?.name || 'موتورها' }}
+                                </button>
+                            </template>
+                        </div>
+
+                        <!-- LOADING -->
+                        <div v-if="vehicleLoading" class="loading" style="min-height:100px">
+                            <div class="spinner"></div>
+                            <span>در حال دریافت اطلاعات...</span>
+                        </div>
+
+                        <!-- VEHICLE FORM -->
+                        <form
+                            v-if="!vehicleLoading"
+                            class="vehicle-form"
+                            @submit.prevent="submitVehicle"
+                        >
+                            <div class="vehicle-form-grid">
+                                <label class="form-field">
+                                    <span>نام</span>
+                                    <input v-model.trim="vehicleForm.name" required>
+                                </label>
+
+                                <label class="form-field">
+                                    <span>Slug</span>
+                                    <input v-model.trim="vehicleForm.slug" required dir="ltr">
+                                </label>
+
+                                <template v-if="vehicleLevel === 'generations'">
+                                    <label class="form-field">
+                                        <span>سال شروع</span>
+                                        <input v-model.number="vehicleForm.year_start" type="number" min="1900" max="2100">
+                                    </label>
+                                    <label class="form-field">
+                                        <span>سال پایان</span>
+                                        <input v-model.number="vehicleForm.year_end" type="number" min="1900" max="2100">
+                                    </label>
+                                </template>
+
+                                <template v-if="vehicleLevel === 'engines'">
+                                    <label class="form-field">
+                                        <span>حجم موتور</span>
+                                        <input v-model.number="vehicleForm.displacement" type="number" step="0.1" min="0">
+                                    </label>
+                                    <label class="form-field">
+                                        <span>نوع سوخت</span>
+                                        <input v-model.trim="vehicleForm.fuel_type" placeholder="بنزین، دیزل، هیبرید...">
+                                    </label>
+                                    <label class="form-field">
+                                        <span>قدرت (اسب‌بخار)</span>
+                                        <input v-model.number="vehicleForm.horsepower" type="number" min="0">
+                                    </label>
+                                </template>
+                            </div>
+
+                            <label class="category-active-toggle">
+                                <input v-model="vehicleForm.is_active" type="checkbox">
+                                فعال باشد
+                            </label>
+
+                            <div class="category-form-actions">
+                                <button
+                                    type="submit"
+                                    class="primary"
+                                    :disabled="vehicleSaving"
+                                >
+                                    {{ vehicleSaving ? 'در حال ذخیره…' : (vehicleEditingId ? 'به‌روزرسانی' : 'ذخیره') }}
+                                </button>
+                                <button
+                                    v-if="vehicleEditingId"
+                                    type="button"
+                                    class="text-button"
+                                    @click="vehicleEditingId = null; vehicleForm = createEmptyVehicleForm()"
+                                >
+                                    انصراف
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- LIST -->
+                        <div v-if="!vehicleLoading && vehicleLevel === 'brands'" class="vehicle-list">
+                            <div v-if="vehicleBrands.length === 0" class="empty">
+                                هنوز برندی ثبت نشده است.
+                            </div>
+                            <div
+                                v-for="brand in vehicleBrands"
+                                :key="brand.id"
+                                class="vehicle-item"
+                            >
+                                <div class="vehicle-item-info" @click="selectBrand(brand.id)">
+                                    <strong>{{ brand.name }}</strong>
+                                    <small>/{{ brand.slug }}</small>
+                                    <span :class="brand.is_active ? 'status ok' : 'status bad'">
+                                        {{ brand.is_active ? 'فعال' : 'غیرفعال' }}
+                                    </span>
+                                    <span class="hint">{{ brand.models_count }} مدل</span>
+                                </div>
+                                <div class="vehicle-item-actions">
+                                    <button type="button" class="text-button" @click="openVehicleForm('brands', brand)">ویرایش</button>
+                                    <button type="button" class="text-button danger" @click="deleteVehicleItem('brands', brand.id)">حذف</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="!vehicleLoading && vehicleLevel === 'models'" class="vehicle-list">
+                            <div v-if="vehicleModels.length === 0" class="empty">
+                                برای این برند مدلی ثبت نشده است.
+                            </div>
+                            <div
+                                v-for="model in vehicleModels"
+                                :key="model.id"
+                                class="vehicle-item"
+                            >
+                                <div class="vehicle-item-info" @click="selectModel(model.id)">
+                                    <strong>{{ model.name }}</strong>
+                                    <small>/{{ model.slug }}</small>
+                                    <span :class="model.is_active ? 'status ok' : 'status bad'">
+                                        {{ model.is_active ? 'فعال' : 'غیرفعال' }}
+                                    </span>
+                                    <span class="hint">{{ model.generations_count }} نسل</span>
+                                </div>
+                                <div class="vehicle-item-actions">
+                                    <button type="button" class="text-button" @click="openVehicleForm('models', model)">ویرایش</button>
+                                    <button type="button" class="text-button danger" @click="deleteVehicleItem('models', model.id)">حذف</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="!vehicleLoading && vehicleLevel === 'generations'" class="vehicle-list">
+                            <div v-if="vehicleGenerations.length === 0" class="empty">
+                                برای این مدل نسلی ثبت نشده است.
+                            </div>
+                            <div
+                                v-for="gen in vehicleGenerations"
+                                :key="gen.id"
+                                class="vehicle-item"
+                            >
+                                <div class="vehicle-item-info" @click="selectGeneration(gen.id)">
+                                    <strong>{{ gen.name }}</strong>
+                                    <small>/{{ gen.slug }}</small>
+                                    <span :class="gen.is_active ? 'status ok' : 'status bad'">
+                                        {{ gen.is_active ? 'فعال' : 'غیرفعال' }}
+                                    </span>
+                                    <span class="hint" v-if="gen.year_start">{{ gen.year_start }}{{ gen.year_end ? ' - ' + gen.year_end : '' }}</span>
+                                    <span class="hint">{{ gen.trims_count }} تیپ</span>
+                                </div>
+                                <div class="vehicle-item-actions">
+                                    <button type="button" class="text-button" @click="openVehicleForm('generations', gen)">ویرایش</button>
+                                    <button type="button" class="text-button danger" @click="deleteVehicleItem('generations', gen.id)">حذف</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="!vehicleLoading && vehicleLevel === 'trims'" class="vehicle-list">
+                            <div v-if="vehicleTrims.length === 0" class="empty">
+                                برای این نسل تیپی ثبت نشده است.
+                            </div>
+                            <div
+                                v-for="trim in vehicleTrims"
+                                :key="trim.id"
+                                class="vehicle-item"
+                            >
+                                <div class="vehicle-item-info" @click="selectTrim(trim.id)">
+                                    <strong>{{ trim.name }}</strong>
+                                    <small>/{{ trim.slug }}</small>
+                                    <span :class="trim.is_active ? 'status ok' : 'status bad'">
+                                        {{ trim.is_active ? 'فعال' : 'غیرفعال' }}
+                                    </span>
+                                    <span class="hint">{{ trim.engines_count }} موتور</span>
+                                </div>
+                                <div class="vehicle-item-actions">
+                                    <button type="button" class="text-button" @click="openVehicleForm('trims', trim)">ویرایش</button>
+                                    <button type="button" class="text-button danger" @click="deleteVehicleItem('trims', trim.id)">حذف</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="!vehicleLoading && vehicleLevel === 'engines'" class="vehicle-list">
+                            <div v-if="vehicleEngines.length === 0" class="empty">
+                                برای این تیپ موتوری ثبت نشده است.
+                            </div>
+                            <div
+                                v-for="engine in vehicleEngines"
+                                :key="engine.id"
+                                class="vehicle-item"
+                            >
+                                <div class="vehicle-item-info">
+                                    <strong>{{ engine.name }}</strong>
+                                    <small>/{{ engine.slug }}</small>
+                                    <span :class="engine.is_active ? 'status ok' : 'status bad'">
+                                        {{ engine.is_active ? 'فعال' : 'غیرفعال' }}
+                                    </span>
+                                    <span class="hint" v-if="engine.displacement">{{ engine.displacement }}L</span>
+                                    <span class="hint" v-if="engine.fuel_type">{{ engine.fuel_type }}</span>
+                                    <span class="hint" v-if="engine.horsepower">{{ engine.horsepower }}hp</span>
+                                </div>
+                                <div class="vehicle-item-actions">
+                                    <button type="button" class="text-button" @click="openVehicleForm('engines', engine)">ویرایش</button>
+                                    <button type="button" class="text-button danger" @click="deleteVehicleItem('engines', engine.id)">حذف</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -2796,6 +3496,118 @@ onMounted(async () => {
                                     </small>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- VEHICLE COMPATIBILITY -->
+
+                        <div v-if="editingProductId" class="form-section">
+                            <div class="form-section-title">
+                                خودروهای سازگار
+                            </div>
+
+                            <p class="hint">
+                                خودروهایی که این محصول با آن‌ها سازگار است را انتخاب کنید.
+                            </p>
+
+                            <!-- LOADING COMPAT -->
+                            <div v-if="compatLoading" class="hint">
+                                در حال دریافت اطلاعات سازگاری...
+                            </div>
+
+                            <template v-else>
+                                <!-- EXISTING COMPAT LIST -->
+                                <div v-if="productCompat.length" class="compat-list">
+                                    <div
+                                        v-for="item in productCompat"
+                                        :key="item.engine.id"
+                                        class="compat-item"
+                                    >
+                                        <div class="compat-info">
+                                            <strong>{{ item.brand.name }}</strong>
+                                            <small>› {{ item.model.name }}</small>
+                                            <small>› {{ item.generation.name }}</small>
+                                            <small v-if="item.generation.year_start">
+                                                ({{ item.generation.year_start }}{{ item.generation.year_end ? '-' + item.generation.year_end : '' }})
+                                            </small>
+                                            <small>› {{ item.trim.name }}</small>
+                                            <small>› {{ item.engine.name }}</small>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="text-button danger"
+                                            @click="removeCompat(editingProductId, item.engine.id)"
+                                        >
+                                            حذف
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div v-else class="hint">
+                                    هنوز خودروی سازگاری ثبت نشده است.
+                                </div>
+
+                                <!-- ADD NEW COMPAT -->
+                                <div class="compat-add-section">
+                                    <p class="hint" style="margin-top:12px"><strong>+ افزودن خودروی سازگار</strong></p>
+
+                                    <div class="compat-cascading-selects">
+                                        <label class="form-field">
+                                            <span>برند</span>
+                                            <select v-model="compatSelectedBrand" @change="compatSelectBrand($event.target.value)">
+                                                <option :value="null">انتخاب برند</option>
+                                                <option v-for="b in compatBrands" :key="b.id" :value="b.id">{{ b.name }}</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="form-field">
+                                            <span>مدل</span>
+                                            <select v-model="compatSelectedModel" :disabled="!compatSelectedBrand" @change="compatSelectModel($event.target.value)">
+                                                <option :value="null">انتخاب مدل</option>
+                                                <option v-for="m in compatModels" :key="m.id" :value="m.id">{{ m.name }}</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="form-field">
+                                            <span>نسل</span>
+                                            <select v-model="compatSelectedGeneration" :disabled="!compatSelectedModel" @change="compatSelectGeneration($event.target.value)">
+                                                <option :value="null">انتخاب نسل</option>
+                                                <option v-for="g in compatGenerations" :key="g.id" :value="g.id">
+                                                    {{ g.name }}{{ g.year_start ? ' (' + g.year_start + (g.year_end ? '-' + g.year_end : '') + ')' : '' }}
+                                                </option>
+                                            </select>
+                                        </label>
+
+                                        <label class="form-field">
+                                            <span>تیپ</span>
+                                            <select v-model="compatSelectedTrim" :disabled="!compatSelectedGeneration" @change="compatSelectTrim($event.target.value)">
+                                                <option :value="null">انتخاب تیپ</option>
+                                                <option v-for="t in compatTrims" :key="t.id" :value="t.id">{{ t.name }}</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="form-field">
+                                            <span>موتور</span>
+                                            <select v-model="compatSelectedEngine" :disabled="!compatSelectedTrim">
+                                                <option :value="null">انتخاب موتور</option>
+                                                <option v-for="e in compatEngines" :key="e.id" :value="e.id" :disabled="isEngineAlreadyCompat(e.id)">
+                                                    {{ e.name }}{{ e.displacement ? ' (' + e.displacement + 'L)' : '' }}{{ isEngineAlreadyCompat(e.id) ? ' — اضافه شده' : '' }}
+                                                </option>
+                                            </select>
+                                        </label>
+                                    </div>
+
+                                    <div class="category-form-actions">
+                                        <button
+                                            type="button"
+                                            class="primary"
+                                            :disabled="!compatSelectedEngine || isEngineAlreadyCompat(compatSelectedEngine)"
+                                            @click="addCompat(editingProductId)"
+                                        >
+                                            افزودن سازگاری
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
 
                         <!-- SETTINGS -->
@@ -4644,6 +5456,158 @@ onMounted(async () => {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
     }
+}
+
+/* =========================================================
+   VEHICLE MANAGEMENT
+========================================================= */
+
+.vehicle-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 0;
+    flex-wrap: wrap;
+}
+
+.vehicle-breadcrumb .text-button {
+    font-size: 13px;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.vehicle-breadcrumb .text-button.active {
+    font-weight: 700;
+    color: #6563d9;
+    background: #efefff;
+}
+
+.vehicle-breadcrumb .bc-sep {
+    color: #999aae;
+    font-size: 12px;
+}
+
+.vehicle-form {
+    margin-bottom: 20px;
+    padding: 18px;
+    background: #fafbfc;
+    border: 1px solid #eef0f5;
+    border-radius: 12px;
+}
+
+.vehicle-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.vehicle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.vehicle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #f0f1f5;
+    transition: .15s ease;
+}
+
+.vehicle-item:hover {
+    border-color: #d5d6e6;
+}
+
+.vehicle-item-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+}
+
+.vehicle-item-info strong {
+    font-size: 14px;
+}
+
+.vehicle-item-info small {
+    color: #999aae;
+    font-size: 12px;
+}
+
+.vehicle-item-info .hint {
+    color: #999aae;
+    font-size: 11px;
+}
+
+.vehicle-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* =========================================================
+   VEHICLE COMPATIBILITY IN PRODUCT FORM
+========================================================= */
+
+.compat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.compat-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #fafbfc;
+    border: 1px solid #eef0f5;
+    border-radius: 10px;
+    gap: 10px;
+}
+
+.compat-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.compat-info strong {
+    font-size: 13px;
+    color: #36384b;
+}
+
+.compat-info small {
+    color: #85869c;
+    font-size: 12px;
+}
+
+.compat-add-section {
+    border-top: 1px solid #eef0f5;
+    padding-top: 12px;
+}
+
+.compat-cascading-selects {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.compat-cascading-selects select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 }

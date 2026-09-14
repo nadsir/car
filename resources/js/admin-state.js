@@ -504,3 +504,157 @@ export async function removeProduct(id) {
 
     await loadProducts();
 }
+
+/*
+|--------------------------------------------------------------------------
+| Vehicle CRUD (Admin)
+|--------------------------------------------------------------------------
+*/
+
+export async function loadAdminBrands() {
+    const response = await axios.get('/api/admin/vehicles/brands');
+    return response.data.data || [];
+}
+
+export async function createBrand(data) {
+    const response = await axios.post('/api/admin/vehicles/brands', data);
+    return response.data;
+}
+
+export async function updateBrand(id, data) {
+    const response = await axios.put(`/api/admin/vehicles/brands/${id}`, data);
+    return response.data;
+}
+
+export async function deleteBrand(id) {
+    await axios.delete(`/api/admin/vehicles/brands/${id}`);
+}
+
+export async function loadAdminModels(brandId) {
+    const response = await axios.get(`/api/admin/vehicles/brands/${brandId}/models`);
+    return response.data.data || [];
+}
+
+export async function createModel(brandId, data) {
+    const response = await axios.post(`/api/admin/vehicles/brands/${brandId}/models`, data);
+    return response.data;
+}
+
+export async function updateModel(brandId, modelId, data) {
+    const response = await axios.put(`/api/admin/vehicles/brands/${brandId}/models/${modelId}`, data);
+    return response.data;
+}
+
+export async function deleteModel(brandId, modelId) {
+    await axios.delete(`/api/admin/vehicles/brands/${brandId}/models/${modelId}`);
+}
+
+export async function loadAdminGenerations(brandId, modelId) {
+    const response = await axios.get(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations`);
+    return response.data.data || [];
+}
+
+export async function createGeneration(brandId, modelId, data) {
+    const response = await axios.post(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations`, data);
+    return response.data;
+}
+
+export async function updateGeneration(brandId, modelId, genId, data) {
+    const response = await axios.put(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}`, data);
+    return response.data;
+}
+
+export async function deleteGeneration(brandId, modelId, genId) {
+    await axios.delete(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}`);
+}
+
+export async function loadAdminTrims(brandId, modelId, genId) {
+    const response = await axios.get(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}/trims`);
+    return response.data.data || [];
+}
+
+export async function createTrim(brandId, modelId, genId, data) {
+    const response = await axios.post(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}/trims`, data);
+    return response.data;
+}
+
+export async function updateTrim(brandId, modelId, genId, trimId, data) {
+    const response = await axios.put(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}/trims/${trimId}`, data);
+    return response.data;
+}
+
+export async function deleteTrim(brandId, modelId, genId, trimId) {
+    await axios.delete(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}/trims/${trimId}`);
+}
+
+export async function loadAdminEngines(brandId, modelId, genId, trimId) {
+    const response = await axios.get(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}/trims/${trimId}/engines`);
+    return response.data.data || [];
+}
+
+export async function createEngine(brandId, modelId, genId, trimId, data) {
+    const response = await axios.post(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}/trims/${trimId}/engines`, data);
+    return response.data;
+}
+
+export async function updateEngine(brandId, modelId, genId, trimId, engineId, data) {
+    const response = await axios.put(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}/trims/${trimId}/engines/${engineId}`, data);
+    return response.data;
+}
+
+export async function deleteEngine(brandId, modelId, genId, trimId, engineId) {
+    await axios.delete(`/api/admin/vehicles/brands/${brandId}/models/${modelId}/generations/${genId}/trims/${trimId}/engines/${engineId}`);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Vehicle Hierarchy (Public API - for selectors)
+|--------------------------------------------------------------------------
+*/
+
+export async function loadBrands() {
+    const response = await axios.get('/api/vehicles/brands');
+    return response.data.data || [];
+}
+
+export async function loadBrandModels(brandId) {
+    const response = await axios.get(`/api/vehicles/brands/${brandId}/models`);
+    return response.data.data || [];
+}
+
+export async function loadModelGenerations(modelId) {
+    const response = await axios.get(`/api/vehicles/models/${modelId}/generations`);
+    return response.data.data || [];
+}
+
+export async function loadGenerationTrims(genId) {
+    const response = await axios.get(`/api/vehicles/generations/${genId}/trims`);
+    return response.data.data || [];
+}
+
+export async function loadTrimEngines(trimId) {
+    const response = await axios.get(`/api/vehicles/trims/${trimId}/engines`);
+    return response.data.data || [];
+}
+
+/*
+|--------------------------------------------------------------------------
+| Product ↔ Vehicle Compatibility
+|--------------------------------------------------------------------------
+*/
+
+export async function loadProductCompatibility(productId) {
+    const response = await axios.get(`/api/admin/products/${productId}/vehicle-compat`);
+    return response.data.data || [];
+}
+
+export async function attachProductCompatibility(productId, engineIds) {
+    const response = await axios.post(`/api/admin/products/${productId}/vehicle-compat`, {
+        vehicle_engine_ids: engineIds,
+    });
+    return response.data;
+}
+
+export async function detachProductCompatibility(productId, engineId) {
+    await axios.delete(`/api/admin/products/${productId}/vehicle-compat/${engineId}`);
+}
