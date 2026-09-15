@@ -11,10 +11,12 @@ const state = reactive({
 let generation = 0;
 let queue = Promise.resolve();
 let ownerToken = getToken();
+let pendingLoad = null;
 
 function resetWishlist() {
     generation += 1;
     queue = Promise.resolve();
+    pendingLoad = null;
     ownerToken = getToken();
     state.items = [];
     state.loading = false;
@@ -103,7 +105,16 @@ async function fetchItems(current) {
 }
 
 function loadWishlist() {
-    return runOperation(fetchItems);
+    if (!hasSession()) return Promise.resolve(null);
+    if (pendingLoad) return pendingLoad;
+
+    // Header and page can request the same initial list in the same render.
+    const request = runOperation(fetchItems);
+    pendingLoad = request;
+    request.finally(() => {
+        if (pendingLoad === request) pendingLoad = null;
+    });
+    return request;
 }
 
 function addToWishlist(productId) {

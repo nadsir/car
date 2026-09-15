@@ -2,7 +2,43 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { cartCount } from './cart-state.js';
-import { state as authState, isLoggedIn } from './auth-state.js';
+import { state as authState, isLoggedIn, logout } from './auth-state.js';
+import { wishlistCount, loadWishlist, resetWishlist } from './wishlist-state.js';
+
+const userDropdownOpen = ref(false);
+const userDropdown = ref(null);
+const userDropdownButton = ref(null);
+const loggingOut = ref(false);
+
+watch(() => authState.user?.id, (userId) => {
+    userDropdownOpen.value = false;
+    if (userId) loadWishlist();
+}, { immediate: true });
+
+function onOutsideUserClick(event) {
+    if (!userDropdown.value?.contains(event.target)) userDropdownOpen.value = false;
+}
+
+function onUserFocusOut(event) {
+    // A pointer click can have no relatedTarget; let the outside-click handler
+    // close the dropdown after its links/buttons have received the click.
+    if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) {
+        userDropdownOpen.value = false;
+    }
+}
+
+async function handleLogout() {
+    if (loggingOut.value) return;
+    loggingOut.value = true;
+    try {
+        await logout();
+        resetWishlist();
+        userDropdownOpen.value = false;
+        closeDrawer();
+    } finally {
+        loggingOut.value = false;
+    }
+}
 
 const isLight = ref(true);
 const mobileSearchOpen = ref(false);
@@ -53,6 +89,10 @@ function onDrawerBackdropClick(e) { if (e.target === e.currentTarget) closeDrawe
 
 function onKeydown(e) {
     if (e.key === 'Escape') {
+        if (userDropdownOpen.value) {
+            userDropdownOpen.value = false;
+            userDropdownButton.value?.focus();
+        }
         if (mobileSearchOpen.value) closeMobileSearch();
         if (drawerOpen.value) closeDrawer();
         if (searchDropdownOpen.value) searchDropdownOpen.value = false;
@@ -137,11 +177,13 @@ function formatPrice(price) {
 onMounted(() => {
     initTheme();
     document.addEventListener('keydown', onKeydown);
+    document.addEventListener('click', onOutsideUserClick);
     window.addEventListener('storage', onStorageTheme);
 });
 
 onUnmounted(() => {
     document.removeEventListener('keydown', onKeydown);
+    document.removeEventListener('click', onOutsideUserClick);
     window.removeEventListener('storage', onStorageTheme);
     clearTimeout(searchTimer);
 });
@@ -237,16 +279,30 @@ onUnmounted(() => {
                         فروشگاه
                     </a>
 
+                    <a href="/wishlist" aria-label="علاقه‌مندی‌ها" class="relative p-2 rounded-lg text-slate-600 hover:text-ink hover:bg-gray-100 transition-colors">
+                        <span class="inline-block text-xl leading-none" aria-hidden="true">♡</span>
+                        <span v-if="isLoggedIn && wishlistCount > 0" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-0.5 bg-brand-accent text-ink text-[10px] font-bold rounded-full flex items-center justify-center">{{ toPersianNumber(wishlistCount) }}</span>
+                    </a>
+
                     <a href="/cart" aria-label="سبد خرید" class="relative p-2 rounded-lg text-slate-600 hover:text-ink hover:bg-gray-100 transition-colors">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <span v-if="cartCount > 0" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-0.5 bg-brand-accent text-ink text-[10px] font-bold rounded-full flex items-center justify-center">{{ toPersianNumber(cartCount) }}</span>
                     </a>
 
                     <template v-if="isLoggedIn">
-                        <a href="/account" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-ink hover:bg-gray-100 transition-colors">
-                            <i class="fa-regular fa-user text-[11px]"></i>
-                            {{ authState.user?.name || 'حساب من' }}
-                        </a>
+                        <div ref="userDropdown" class="relative" @focusout="onUserFocusOut">
+                            <button ref="userDropdownButton" type="button" aria-label="منوی حساب کاربری" :aria-expanded="userDropdownOpen" aria-controls="header-user-dropdown" class="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-ink hover:bg-gray-100 transition-colors" @click="userDropdownOpen = !userDropdownOpen">
+                                <i class="fa-regular fa-user text-[11px]" aria-hidden="true"></i>
+                                <span class="hidden sm:block max-w-28 truncate">{{ authState.user?.name || 'حساب من' }}</span>
+                                <i class="fa-solid fa-chevron-down text-[8px]" aria-hidden="true"></i>
+                            </button>
+                            <div v-if="userDropdownOpen" id="header-user-dropdown" class="absolute left-0 top-full mt-2 w-48 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl text-xs text-slate-600">
+                                <a href="/account" class="flex items-center gap-2 rounded-lg p-2.5 hover:bg-gray-100"><i class="fa-regular fa-user w-4" aria-hidden="true"></i> حساب کاربری</a>
+                                <a href="/wishlist" class="flex items-center gap-2 rounded-lg p-2.5 hover:bg-gray-100"><i class="fa-regular fa-heart w-4" aria-hidden="true"></i> علاقه‌مندی‌ها</a>
+                                <a href="/cart" class="flex items-center gap-2 rounded-lg p-2.5 hover:bg-gray-100"><i class="fa-solid fa-cart-shopping w-4" aria-hidden="true"></i> سبد خرید</a>
+                                <button type="button" :disabled="loggingOut" class="flex w-full items-center gap-2 rounded-lg p-2.5 text-red-600 hover:bg-gray-100 disabled:opacity-50" @click="handleLogout"><i class="fa-solid fa-right-from-bracket w-4" aria-hidden="true"></i> {{ loggingOut ? 'در حال خروج…' : 'خروج' }}</button>
+                            </div>
+                        </div>
                     </template>
                     <template v-else>
                         <a href="/login" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-accent hover:bg-brand-hover text-dark-900 text-xs font-bold transition-colors">
@@ -336,12 +392,23 @@ onUnmounted(() => {
                             <a href="/store?sort=newest" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
                                 <i class="fa-solid fa-fire text-xs w-5 text-center text-brand-accent"></i> جدیدترین محصولات
                             </a>
+                            <a href="/wishlist" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
+                                <i class="fa-regular fa-heart text-xs w-5 text-center"></i> علاقه‌مندی‌ها
+                                <span v-if="isLoggedIn && wishlistCount > 0" class="text-xs text-brand-accent">{{ toPersianNumber(wishlistCount) }}</span>
+                            </a>
+                            <a href="/cart" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
+                                <i class="fa-solid fa-cart-shopping text-xs w-5 text-center"></i> سبد خرید
+                                <span v-if="cartCount > 0" class="text-xs text-brand-accent">{{ toPersianNumber(cartCount) }}</span>
+                            </a>
                             <a v-if="isLoggedIn" href="/account" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
                                 <i class="fa-regular fa-user text-xs w-5 text-center"></i> حساب من
                             </a>
                             <a v-else href="/login" class="flex items-center gap-2 p-2.5 rounded-lg text-brand-accent font-bold hover:bg-gray-100 transition-colors">
                                 <i class="fa-regular fa-user text-xs w-5 text-center"></i> ورود / ثبت‌نام
                             </a>
+                            <button v-if="isLoggedIn" type="button" :disabled="loggingOut" class="flex w-full items-center gap-2 p-2.5 rounded-lg text-red-600 hover:bg-gray-100 disabled:opacity-50" @click="handleLogout">
+                                <i class="fa-solid fa-right-from-bracket text-xs w-5 text-center"></i> {{ loggingOut ? 'در حال خروج…' : 'خروج' }}
+                            </button>
                         </div>
                     </div>
                     <div class="pt-3 border-t border-gray-200 text-[11px] text-slate-500">
