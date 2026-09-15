@@ -12,11 +12,23 @@ use App\Http\Controllers\Api\AdminVehicleController;
 use App\Http\Controllers\Api\FilteredProductController;
 use App\Http\Controllers\Api\ProductDetailController;
 use App\Http\Controllers\Api\AdminProductImageController;
+use App\Http\Controllers\Api\CustomerAuthController;
 use App\Http\Controllers\Api\VehicleController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+// ── Customer Auth ──────────────────────────────────────────
+Route::post('/customer/register', [CustomerAuthController::class, 'register'])
+    ->middleware('throttle:10,1');
+Route::post('/customer/login', [CustomerAuthController::class, 'login'])
+    ->middleware('throttle:10,1');
+Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
+    Route::get('/me', [CustomerAuthController::class, 'me']);
+    Route::post('/logout', [CustomerAuthController::class, 'logout']);
+    Route::put('/profile', [CustomerAuthController::class, 'updateProfile']);
+});
 
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/categories/tree', [CategoryController::class, 'index']);

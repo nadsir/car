@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { cartCount } from './cart-state.js';
+import { state as authState, isLoggedIn } from './auth-state.js';
 
 const isLight = ref(true);
 const mobileSearchOpen = ref(false);
@@ -60,10 +61,6 @@ function onKeydown(e) {
 
 function toPersianNumber(n) {
     return String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
-}
-
-function onLoginClick() {
-    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'در نسخه Laravel این دکمه به صفحه ورود و ثبت‌نام متصل می‌شود.', title: 'ورود / ثبت‌نام', type: 'success' } }));
 }
 
 function openMobileSearch() {
@@ -245,10 +242,18 @@ onUnmounted(() => {
                         <span v-if="cartCount > 0" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-0.5 bg-brand-accent text-ink text-[10px] font-bold rounded-full flex items-center justify-center">{{ toPersianNumber(cartCount) }}</span>
                     </a>
 
-                    <button type="button" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-accent hover:bg-brand-hover text-dark-900 text-xs font-bold transition-colors" @click="onLoginClick">
-                        <i class="fa-regular fa-user text-[11px]"></i>
-                        ورود
-                    </button>
+                    <template v-if="isLoggedIn">
+                        <a href="/account" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-ink hover:bg-gray-100 transition-colors">
+                            <i class="fa-regular fa-user text-[11px]"></i>
+                            {{ authState.user?.name || 'حساب من' }}
+                        </a>
+                    </template>
+                    <template v-else>
+                        <a href="/login" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-accent hover:bg-brand-hover text-dark-900 text-xs font-bold transition-colors">
+                            <i class="fa-regular fa-user text-[11px]"></i>
+                            ورود
+                        </a>
+                    </template>
                 </div>
             </div>
         </div>
@@ -330,6 +335,12 @@ onUnmounted(() => {
                             </a>
                             <a href="/store?sort=newest" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
                                 <i class="fa-solid fa-fire text-xs w-5 text-center text-brand-accent"></i> جدیدترین محصولات
+                            </a>
+                            <a v-if="isLoggedIn" href="/account" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
+                                <i class="fa-regular fa-user text-xs w-5 text-center"></i> حساب من
+                            </a>
+                            <a v-else href="/login" class="flex items-center gap-2 p-2.5 rounded-lg text-brand-accent font-bold hover:bg-gray-100 transition-colors">
+                                <i class="fa-regular fa-user text-xs w-5 text-center"></i> ورود / ثبت‌نام
                             </a>
                         </div>
                     </div>
