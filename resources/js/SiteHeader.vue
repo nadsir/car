@@ -1,13 +1,13 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
+import { cartCount } from './cart-state.js';
 
 const isLight = ref(true);
 const mobileSearchOpen = ref(false);
 const mobileSearchQuery = ref('');
 const mobileSearchInput = ref(null);
 const drawerOpen = ref(false);
-const cartCount = ref(0);
 const searchQuery = ref('');
 const searchSuggestions = ref([]);
 const searchSuggestionsLoading = ref(false);
@@ -60,15 +60,6 @@ function onKeydown(e) {
 
 function toPersianNumber(n) {
     return String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
-}
-
-function showCartInfo() {
-    const count = Number(localStorage.getItem('turbopart-cart-count') || 0);
-    if (count === 0) {
-        window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'سبد خرید شما هنوز خالی است.', title: 'سبد خرید', type: 'warning' } }));
-        return;
-    }
-    window.dispatchEvent(new CustomEvent('toast', { detail: { message: `${toPersianNumber(count)} محصول در سبد خرید دارید.`, title: 'سبد خرید', type: 'success' } }));
 }
 
 function onLoginClick() {
@@ -148,7 +139,6 @@ function formatPrice(price) {
 
 onMounted(() => {
     initTheme();
-    cartCount.value = Number(localStorage.getItem('turbopart-cart-count') || 0);
     document.addEventListener('keydown', onKeydown);
     window.addEventListener('storage', onStorageTheme);
 });
@@ -250,10 +240,10 @@ onUnmounted(() => {
                         فروشگاه
                     </a>
 
-                    <button type="button" aria-label="سبد خرید" class="relative p-2 rounded-lg text-slate-600 hover:text-ink hover:bg-gray-100 transition-colors" @click="showCartInfo">
+                    <a href="/cart" aria-label="سبد خرید" class="relative p-2 rounded-lg text-slate-600 hover:text-ink hover:bg-gray-100 transition-colors">
                         <i class="fa-solid fa-cart-shopping"></i>
                         <span v-if="cartCount > 0" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-0.5 bg-brand-accent text-ink text-[10px] font-bold rounded-full flex items-center justify-center">{{ toPersianNumber(cartCount) }}</span>
-                    </button>
+                    </a>
 
                     <button type="button" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-accent hover:bg-brand-hover text-dark-900 text-xs font-bold transition-colors" @click="onLoginClick">
                         <i class="fa-regular fa-user text-[11px]"></i>

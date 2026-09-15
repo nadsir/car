@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import axios from 'axios';
 import SiteHeader from './SiteHeader.vue';
 import SiteFooter from './SiteFooter.vue';
+import { addToCart } from './cart-state.js';
 
 const product = ref(null);
 const loading = ref(true);
@@ -131,6 +132,55 @@ function goBack() {
     else window.location.href = '/store';
 }
 
+function addToCartToCart() {
+    if (!displayInStock.value) return;
+    if (needsVariantSelection.value) return;
+
+    const p = product.value;
+    if (!p) return;
+
+    const v = matchedVariant.value;
+    const key = v ? `variant_${v.id}` : `product_${p.id}`;
+
+    const image =
+        p.images?.find((img) => img.is_primary)?.path ||
+        p.images?.[0]?.path ||
+        null;
+
+    let attributes = null;
+    if (v?.attributes) {
+        attributes = {};
+        for (const [slug, vals] of Object.entries(
+            v.attributes
+        )) {
+            attributes[slug] = vals;
+        }
+    }
+
+    addToCart({
+        key,
+        product_id: p.id,
+        variant_id: v?.id || null,
+        name: p.name,
+        price: displayPrice.value,
+        quantity: quantity.value,
+        image: image ? `/storage/${image}` : null,
+        attributes,
+        sku: displaySku.value || null,
+        stock: v?.stock ?? p.stock ?? 999,
+    });
+
+    window.dispatchEvent(
+        new CustomEvent('toast', {
+            detail: {
+                message: `${p.name} به سبد خرید اضافه شد.`,
+                title: 'افزودن به سبد',
+                type: 'success',
+            },
+        })
+    );
+}
+
 onMounted(fetchProduct);
 </script>
 
@@ -237,7 +287,13 @@ onMounted(fetchProduct);
                             <span class="min-w-[2rem] text-center text-sm font-mono">{{ quantity }}</span>
                             <button type="button" class="px-3 py-2 text-sm text-ink hover:bg-gray-100 transition-colors" @click="quantity++">+</button>
                         </div>
-                        <button type="button" disabled class="flex-1 rounded-lg bg-brand-accent text-dark-900 py-2.5 text-sm font-bold opacity-50 cursor-not-allowed shadow-glow-yellow">
+                        <button
+                            type="button"
+                            :disabled="!displayInStock || needsVariantSelection"
+                            class="flex-1 rounded-lg bg-brand-accent text-dark-900 py-2.5 text-sm font-bold shadow-glow-yellow transition-colors"
+                            :class="!displayInStock || needsVariantSelection ? 'opacity-50 cursor-not-allowed' : 'hover:bg-brand-hover'"
+                            @click="addToCartToCart"
+                        >
                             <i class="fa-solid fa-cart-plus ml-1.5 text-xs"></i> افزودن به سبد خرید
                         </button>
                     </div>

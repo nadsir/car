@@ -29,16 +29,8 @@ function onToastEvent(e) {
 }
 
 /* ── Cart ─────────────────────────────────────────────────── */
-const cartCount = ref(0);
-
 function toPersianNumber(n) {
     return String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
-}
-
-function addToCart(product) {
-    cartCount.value++;
-    localStorage.setItem('turbopart-cart-count', String(cartCount.value));
-    showToast(`${product} به سبد خرید اضافه شد.`, 'افزودن به سبد');
 }
 
 /* ── Helpers ──────────────────────────────────────────────── */

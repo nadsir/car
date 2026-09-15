@@ -8,5 +8,7 @@ Route::get('/', fn () => view('welcome'));
 
 Route::get('/store', fn () => view('welcome'));
 
+Route::get('/cart', fn () => view('welcome'));
+
 Route::get('/products/{id}', fn () => view('welcome'))
     ->whereNumber('id');

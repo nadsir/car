@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import axios from 'axios';
 import SiteHeader from './SiteHeader.vue';
 import SiteFooter from './SiteFooter.vue';
+import { addToCart } from './cart-state.js';
 
 const categories = ref([]);
 const filters = ref([]);
@@ -367,6 +368,42 @@ function productImage(product) {
 function formatPrice(price) { return Number(price || 0).toLocaleString('fa-IR'); }
 const hasActiveFilters = computed(() => activeFilters.value.length > 0 || state.category !== '');
 
+function addToCartFromStorefront(product) {
+    if (product.has_variants) {
+        window.location.href = `/products/${product.id}`;
+        return;
+    }
+    if (!product.in_stock) return;
+
+    const image =
+        product.images?.find((img) => img.is_primary)?.path ||
+        product.images?.[0]?.path ||
+        null;
+
+    addToCart({
+        key: `product_${product.id}`,
+        product_id: product.id,
+        variant_id: null,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        image: image ? `/storage/${image}` : null,
+        attributes: null,
+        sku: product.sku || null,
+        stock: product.stock ?? 999,
+    });
+
+    window.dispatchEvent(
+        new CustomEvent('toast', {
+            detail: {
+                message: `${product.name} به سبد خرید اضافه شد.`,
+                title: 'افزودن به سبد',
+                type: 'success',
+            },
+        })
+    );
+}
+
 function onImgError(e) {
     e.target.onerror = null;
     e.target.src = '/images/placeholder.svg';
@@ -628,6 +665,18 @@ onUnmounted(() => {
                                     </dl>
                                 </div>
                             </a>
+                            <div class="px-3 pb-3">
+                                <button
+                                    type="button"
+                                    :disabled="!product.in_stock"
+                                    class="w-full rounded-lg bg-brand-accent text-dark-900 py-2 text-[11px] font-bold transition-colors"
+                                    :class="!product.in_stock ? 'opacity-40 cursor-not-allowed' : 'hover:bg-brand-hover'"
+                                    @click.prevent="addToCartFromStorefront(product)"
+                                >
+                                    <i class="fa-solid fa-cart-plus ml-1 text-[9px]"></i>
+                                    {{ product.in_stock ? 'افزودن به سبد' : 'ناموجود' }}
+                                </button>
+                            </div>
                         </article>
                     </div>
 
