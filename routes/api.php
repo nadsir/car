@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\FilteredProductController;
 use App\Http\Controllers\Api\ProductDetailController;
 use App\Http\Controllers\Api\AdminProductImageController;
 use App\Http\Controllers\Api\CustomerAuthController;
+use App\Http\Controllers\Api\CustomerWishlistController;
 use App\Http\Controllers\Api\VehicleController;
 
 Route::get('/user', function (Request $request) {
@@ -28,6 +29,10 @@ Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
     Route::get('/me', [CustomerAuthController::class, 'me']);
     Route::post('/logout', [CustomerAuthController::class, 'logout']);
     Route::put('/profile', [CustomerAuthController::class, 'updateProfile']);
+    Route::get('/wishlist', [CustomerWishlistController::class, 'index']);
+    Route::post('/wishlist', [CustomerWishlistController::class, 'store']);
+    Route::delete('/wishlist/{product}', [CustomerWishlistController::class, 'destroy'])->whereNumber('product');
+    Route::get('/wishlist/check/{product}', [CustomerWishlistController::class, 'check'])->whereNumber('product');
 });
 
 Route::get('/categories', [CategoryController::class, 'index']);
