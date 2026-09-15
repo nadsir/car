@@ -298,6 +298,7 @@ onUnmounted(() => {
                             </button>
                             <div v-if="userDropdownOpen" id="header-user-dropdown" class="absolute left-0 top-full mt-2 w-48 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl text-xs text-slate-600">
                                 <a href="/account" class="flex items-center gap-2 rounded-lg p-2.5 hover:bg-gray-100"><i class="fa-regular fa-user w-4" aria-hidden="true"></i> حساب کاربری</a>
+                                <a href="/orders" class="flex items-center gap-2 rounded-lg p-2.5 hover:bg-gray-100"><i class="fa-solid fa-box w-4" aria-hidden="true"></i> سفارش‌های من</a>
                                 <a href="/wishlist" class="flex items-center gap-2 rounded-lg p-2.5 hover:bg-gray-100"><i class="fa-regular fa-heart w-4" aria-hidden="true"></i> علاقه‌مندی‌ها</a>
                                 <a href="/cart" class="flex items-center gap-2 rounded-lg p-2.5 hover:bg-gray-100"><i class="fa-solid fa-cart-shopping w-4" aria-hidden="true"></i> سبد خرید</a>
                                 <button type="button" :disabled="loggingOut" class="flex w-full items-center gap-2 rounded-lg p-2.5 text-red-600 hover:bg-gray-100 disabled:opacity-50" @click="handleLogout"><i class="fa-solid fa-right-from-bracket w-4" aria-hidden="true"></i> {{ loggingOut ? 'در حال خروج…' : 'خروج' }}</button>
@@ -391,6 +392,9 @@ onUnmounted(() => {
                             </a>
                             <a href="/store?sort=newest" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
                                 <i class="fa-solid fa-fire text-xs w-5 text-center text-brand-accent"></i> جدیدترین محصولات
+                            </a>
+                            <a v-if="isLoggedIn" href="/orders" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
+                                <i class="fa-solid fa-box text-xs w-5 text-center"></i> سفارش‌های من
                             </a>
                             <a href="/wishlist" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
                                 <i class="fa-regular fa-heart text-xs w-5 text-center"></i> علاقه‌مندی‌ها

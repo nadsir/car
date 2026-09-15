@@ -207,13 +207,12 @@ function remove(key) {
                         >
                             ادامه خرید
                         </a>
-                        <button
-                            type="button"
-                            disabled
-                            class="flex-1 rounded-lg bg-brand-accent text-dark-900 py-2.5 text-xs font-bold opacity-50 cursor-not-allowed"
+                        <a
+                            href="/checkout"
+                            class="flex-1 text-center rounded-lg bg-brand-accent text-dark-900 py-2.5 text-xs font-bold hover:bg-brand-hover"
                         >
                             تکمیل خرید
-                        </button>
+                        </a>
                     </div>
                     <button
                         type="button"

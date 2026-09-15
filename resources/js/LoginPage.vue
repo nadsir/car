@@ -8,9 +8,11 @@ const email = ref('');
 const password = ref('');
 const loading = ref(false);
 const error = ref('');
+const destination = new URLSearchParams(window.location.search).get('redirect') === '/checkout'
+    ? '/checkout' : '/account';
 
 if (isLoggedIn.value) {
-    window.location.href = '/account';
+    window.location.href = destination;
 }
 
 async function onSubmit() {
@@ -19,7 +21,7 @@ async function onSubmit() {
 
     try {
         await login(email.value, password.value);
-        window.location.href = '/account';
+        window.location.href = destination;
     } catch (e) {
         const msg = e.response?.data?.message;
         const errors = e.response?.data?.errors;

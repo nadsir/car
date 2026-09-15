@@ -113,6 +113,7 @@ async function onLogout() {
                     </form>
 
                     <div class="mt-6 pt-4 border-t border-gray-200 space-y-2">
+                        <a href="/orders" class="block w-full text-center rounded-lg border border-gray-200 py-2.5 text-xs font-bold text-slate-600 hover:border-gray-400 transition-colors">مشاهده سفارش‌های من</a>
                         <a
                             href="/store"
                             class="block w-full text-center rounded-lg border border-gray-200 py-2.5 text-xs font-bold text-slate-600 hover:border-gray-400 transition-colors"

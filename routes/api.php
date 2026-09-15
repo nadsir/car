@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\FilteredProductController;
 use App\Http\Controllers\Api\ProductDetailController;
 use App\Http\Controllers\Api\AdminProductImageController;
 use App\Http\Controllers\Api\CustomerAuthController;
+use App\Http\Controllers\Api\CustomerCheckoutController;
+use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerWishlistController;
 use App\Http\Controllers\Api\VehicleController;
 
@@ -26,6 +28,9 @@ Route::post('/customer/register', [CustomerAuthController::class, 'register'])
 Route::post('/customer/login', [CustomerAuthController::class, 'login'])
     ->middleware('throttle:10,1');
 Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
+    Route::get('/orders', [CustomerOrderController::class, 'index']);
+    Route::get('/orders/{order}', [CustomerOrderController::class, 'show'])->whereNumber('order');
+    Route::post('/checkout', [CustomerCheckoutController::class, 'store']);
     Route::get('/me', [CustomerAuthController::class, 'me']);
     Route::post('/logout', [CustomerAuthController::class, 'logout']);
     Route::put('/profile', [CustomerAuthController::class, 'updateProfile']);
