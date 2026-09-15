@@ -1,10 +1,8 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import axios from 'axios';
-
-/* ────────────────────────────────────────────────────────────
- | State
- | ──────────────────────────────────────────────────────────── */
+import SiteHeader from './SiteHeader.vue';
+import SiteFooter from './SiteFooter.vue';
 
 const product = ref(null);
 const loading = ref(true);
@@ -14,12 +12,7 @@ const quantity = ref(1);
 const showAllVehicles = ref(false);
 const VEHICLE_SHOW_LIMIT = 5;
 
-/* ── Variant selection ──────────────────────────────────────── */
 const selectedVariants = reactive({});
-
-/* ────────────────────────────────────────────────────────────
- | Helpers
- | ──────────────────────────────────────────────────────────── */
 
 function formatPrice(price) {
     return Number(price || 0).toLocaleString('fa-IR');
@@ -30,535 +23,288 @@ function productImage(p) {
     return image?.path ? `/storage/${image.path}` : '';
 }
 
-/* ────────────────────────────────────────────────────────────
- | Images
- | ──────────────────────────────────────────────────────────── */
+function onImgError(e) {
+    e.target.onerror = null;
+    e.target.src = '/images/placeholder.svg';
+}
 
 const images = computed(() => product.value?.images || []);
+const sortedImages = computed(() => [...images.value].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+const mainImage = computed(() => sortedImages.value[mainImageIndex.value] || sortedImages.value[0]);
+const mainImageUrl = computed(() => mainImage.value?.path ? `/storage/${mainImage.value.path}` : '');
 
-const sortedImages = computed(() => {
-    return [...images.value].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-});
+function selectImage(index) { mainImageIndex.value = index; }
+function prevImage() { mainImageIndex.value = mainImageIndex.value > 0 ? mainImageIndex.value - 1 : sortedImages.value.length - 1; }
+function nextImage() { mainImageIndex.value = mainImageIndex.value < sortedImages.value.length - 1 ? mainImageIndex.value + 1 : 0; }
 
-const mainImage = computed(() => {
-    return sortedImages.value[mainImageIndex.value] || sortedImages.value[0];
-});
-
-const mainImageUrl = computed(() => {
-    return mainImage.value?.path ? `/storage/${mainImage.value.path}` : '';
-});
-
-function selectImage(index) {
-    mainImageIndex.value = index;
-}
-
-function prevImage() {
-    mainImageIndex.value = mainImageIndex.value > 0
-        ? mainImageIndex.value - 1
-        : sortedImages.value.length - 1;
-}
-
-function nextImage() {
-    mainImageIndex.value = mainImageIndex.value < sortedImages.value.length - 1
-        ? mainImageIndex.value + 1
-        : 0;
-}
-
-/* ────────────────────────────────────────────────────────────
- | Variant combination logic
- | ──────────────────────────────────────────────────────────── */
-
-/**
- * Each key in selectedVariants is an attribute slug, value is the
- * attribute value id (string). When all axes have a selection we
- * try to match a variant.
- */
 const attributeAxes = computed(() => {
     const attrs = product.value?.attributes;
     if (!attrs || typeof attrs !== 'object') return [];
-    return Object.entries(attrs).map(([slug, values]) => ({
-        slug,
-        values: Array.isArray(values) ? values : [],
-    }));
+    return Object.entries(attrs).map(([slug, values]) => ({ slug, values: Array.isArray(values) ? values : [] }));
 });
+const hasVariants = computed(() => product.value?.variants?.length > 0);
 
-const hasVariants = computed(() => {
-    return product.value?.variants?.length > 0;
-});
-
-/**
- * Build a lookup: map of `slug:valueId` → variant
- */
 function buildVariantLookup() {
     const variants = product.value?.variants || [];
     const lookup = new Map();
-
     for (const variant of variants) {
         if (!variant.is_active) continue;
-        const attrs = variant.attributes || {};
         const keys = [];
-        for (const [slug, values] of Object.entries(attrs)) {
-            for (const v of values) {
-                keys.push(`${slug}:${v.id}`);
-            }
+        for (const [slug, values] of Object.entries(variant.attributes || {})) {
+            for (const v of values) keys.push(`${slug}:${v.id}`);
         }
         keys.sort();
         lookup.set(keys.join('|'), variant);
     }
-
     return lookup;
 }
 
 const matchedVariant = computed(() => {
     if (!hasVariants.value) return null;
-
     const lookup = buildVariantLookup();
     const keys = [];
-
     for (const [slug, valueId] of Object.entries(selectedVariants)) {
         if (valueId) keys.push(`${slug}:${valueId}`);
     }
-
     if (keys.length === 0) return null;
     keys.sort();
-
     return lookup.get(keys.join('|')) || null;
 });
 
-/**
- * Determine if a specific value option is selectable given current
- * selections on other axes. A value is selectable if there exists at
- * least one variant that matches all other axes + this value.
- */
 function isValueSelectable(axisSlug, valueId) {
     if (!hasVariants.value) return true;
-
-    const variants = product.value?.variants || [];
-
-    for (const variant of variants) {
+    for (const variant of product.value?.variants || []) {
         if (!variant.is_active) continue;
-        const attrs = variant.attributes || {};
-
         let matches = true;
         for (const [slug, valueIdOther] of Object.entries(selectedVariants)) {
-            if (slug === axisSlug) continue;
-            if (!valueIdOther) continue;
-            const variantValues = attrs[slug];
-            if (!variantValues?.some((v) => String(v.id) === String(valueIdOther))) {
-                matches = false;
-                break;
-            }
+            if (slug === axisSlug || !valueIdOther) continue;
+            const variantValues = variant.attributes?.[slug];
+            if (!variantValues?.some((v) => String(v.id) === String(valueIdOther))) { matches = false; break; }
         }
         if (!matches) continue;
-
-        const axisValues = attrs[axisSlug];
-        if (axisValues?.some((v) => String(v.id) === String(valueId))) {
-            return true;
-        }
+        if (variant.attributes?.[axisSlug]?.some((v) => String(v.id) === String(valueId))) return true;
     }
-
     return false;
 }
 
 function onVariantSelect(axisSlug, valueId) {
-    if (selectedVariants[axisSlug] === String(valueId)) {
-        delete selectedVariants[axisSlug];
-    } else {
-        selectedVariants[axisSlug] = String(valueId);
-    }
+    if (selectedVariants[axisSlug] === String(valueId)) delete selectedVariants[axisSlug];
+    else selectedVariants[axisSlug] = String(valueId);
     mainImageIndex.value = 0;
 }
 
-/* ────────────────────────────────────────────────────────────
- | Display price / stock (variant-aware)
- | ──────────────────────────────────────────────────────────── */
+const displayPrice = computed(() => matchedVariant.value?.price ?? product.value?.price ?? 0);
+const displayCompareAtPrice = computed(() => matchedVariant.value?.compare_at_price ?? product.value?.compare_at_price ?? null);
+const displaySku = computed(() => matchedVariant.value?.sku || product.value?.sku || '');
+const displayInStock = computed(() => matchedVariant.value ? matchedVariant.value.stock > 0 : product.value?.in_stock ?? false);
+const displayStock = computed(() => matchedVariant.value?.stock ?? null);
 
-const displayPrice = computed(() => {
-    if (matchedVariant.value) return matchedVariant.value.price;
-    return product.value?.price || 0;
-});
-
-const displayCompareAtPrice = computed(() => {
-    if (matchedVariant.value) return matchedVariant.value.compare_at_price;
-    return product.value?.compare_at_price || null;
-});
-
-const displaySku = computed(() => {
-    if (matchedVariant.value?.sku) return matchedVariant.value.sku;
-    return product.value?.sku || '';
-});
-
-const displayInStock = computed(() => {
-    if (matchedVariant.value) return matchedVariant.value.stock > 0;
-    return product.value?.in_stock ?? false;
-});
-
-const displayStock = computed(() => {
-    if (matchedVariant.value) return matchedVariant.value.stock;
-    return null;
-});
-
-/**
- * When variants exist but user hasn't selected a full combination yet.
- */
 const needsVariantSelection = computed(() => {
-    if (!hasVariants.value) return false;
-    if (matchedVariant.value) return false;
-    const totalAxes = attributeAxes.value.length;
-    const selectedCount = Object.values(selectedVariants).filter(Boolean).length;
-    return totalAxes > 0 && selectedCount < totalAxes;
+    if (!hasVariants.value || matchedVariant.value) return false;
+    return attributeAxes.value.length > 0 && Object.values(selectedVariants).filter(Boolean).length < attributeAxes.value.length;
 });
 
-/**
- * Non-variant attributes for the attributes table.
- * Excludes axes used for variant selection to avoid duplication.
- */
 const displayAttributes = computed(() => {
     const attrs = product.value?.attributes;
     if (!attrs || typeof attrs !== 'object') return [];
     const variantSlugs = new Set(attributeAxes.value.map((a) => a.slug));
-    return Object.entries(attrs)
-        .filter(([slug]) => !variantSlugs.has(slug))
-        .map(([slug, values]) => ({
-            slug,
-            values: Array.isArray(values) ? values : [],
-        }));
+    return Object.entries(attrs).filter(([slug]) => !variantSlugs.has(slug)).map(([slug, values]) => ({ slug, values: Array.isArray(values) ? values : [] }));
 });
-
-/* ────────────────────────────────────────────────────────────
- | Vehicle compatibility
- | ──────────────────────────────────────────────────────────── */
 
 const vehicleCompat = computed(() => product.value?.vehicle_compatibility || []);
-
-const visibleVehicles = computed(() => {
-    if (showAllVehicles.value) return vehicleCompat.value;
-    return vehicleCompat.value.slice(0, VEHICLE_SHOW_LIMIT);
-});
-
-/* ────────────────────────────────────────────────────────────
- | Breadcrumb
- | ──────────────────────────────────────────────────────────── */
-
+const visibleVehicles = computed(() => showAllVehicles.value ? vehicleCompat.value : vehicleCompat.value.slice(0, VEHICLE_SHOW_LIMIT));
 const categoryPath = computed(() => product.value?.categories || []);
-
-/* ────────────────────────────────────────────────────────────
- | Fetch product
- | ──────────────────────────────────────────────────────────── */
 
 async function fetchProduct() {
     const match = location.pathname.match(/\/products\/(\d+)/);
-    if (!match) {
-        error.value = 'محصول مورد نظر پیدا نشد.';
-        loading.value = false;
-        return;
-    }
-
+    if (!match) { error.value = 'محصول مورد نظر پیدا نشد.'; loading.value = false; return; }
     try {
         const { data } = await axios.get(`/api/products/${match[1]}`);
         product.value = data.data || data;
     } catch (e) {
-        if (e.response?.status === 404) {
-            error.value = 'محصول مورد نظر پیدا نشد.';
-        } else {
-            error.value = 'خطا در دریافت اطلاعات محصول.';
-        }
-    } finally {
-        loading.value = false;
-    }
+        error.value = e.response?.status === 404 ? 'محصول مورد نظر پیدا نشد.' : 'خطا در دریافت اطلاعات محصول.';
+    } finally { loading.value = false; }
 }
 
 function goBack() {
-    if (window.history.length > 1) {
-        window.history.back();
-    } else {
-        window.location.href = '/';
-    }
+    if (window.history.length > 1) window.history.back();
+    else window.location.href = '/store';
 }
-
-/* ────────────────────────────────────────────────────────────
- | Lifecycle
- | ──────────────────────────────────────────────────────────── */
 
 onMounted(fetchProduct);
 </script>
 
 <template>
-    <main class="min-h-screen bg-cream text-ink dark:bg-[#1c1721] dark:text-rose">
+    <div class="min-h-screen bg-cream text-ink font-sans antialiased">
+        <SiteHeader />
+
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center py-32">
-            <p class="text-sm text-black/50 dark:text-white/50">در حال بارگذاری محصول…</p>
+            <div class="text-center">
+                <i class="fa-solid fa-spinner fa-spin text-2xl text-brand-accent mb-3"></i>
+                <p class="text-xs text-slate-500">در حال بارگذاری محصول…</p>
+            </div>
         </div>
 
-        <!-- Error / Not Found -->
-        <div v-else-if="error" class="mx-auto max-w-4xl px-4 py-32 text-center">
-            <p class="mb-6 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
-            <button
-                type="button"
-                class="rounded-lg bg-plum px-6 py-2 text-sm text-white dark:bg-rose dark:text-ink"
-                @click="goBack"
-            >
-                بازگشت به محصولات
+        <!-- Error -->
+        <div v-else-if="error" class="mx-auto max-w-4xl px-4 py-24 text-center">
+            <i class="fa-solid fa-circle-exclamation text-4xl text-slate-500 mb-4"></i>
+            <p class="mb-5 text-sm text-red-600">{{ error }}</p>
+            <button type="button" class="px-5 py-2 rounded-lg bg-brand-accent text-ink text-xs font-bold hover:bg-brand-hover transition-colors" @click="goBack">
+                بازگشت به فروشگاه
             </button>
         </div>
 
         <!-- Product -->
-        <div v-else-if="product" class="mx-auto max-w-6xl px-4 py-8">
+        <div v-else-if="product" class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
             <!-- Breadcrumb -->
-            <nav class="mb-6 flex items-center gap-2 text-xs text-black/50 dark:text-white/50">
-                <a href="/" class="hover:underline">فروشگاه</a>
-                <span v-for="(cat, idx) in categoryPath" :key="cat.id" class="flex items-center gap-2">
-                    <span>/</span>
-                    <span class="text-ink dark:text-rose">{{ cat.name }}</span>
-                </span>
+            <nav class="mb-5 flex items-center gap-1.5 text-[11px] text-slate-500">
+                <a href="/store" class="hover:text-brand-accent transition-colors">فروشگاه</a>
+                <template v-for="(cat, idx) in categoryPath" :key="cat.id">
+                    <i class="fa-solid fa-chevron-left text-[8px] text-slate-600"></i>
+                    <span class="text-ink">{{ cat.name }}</span>
+                </template>
             </nav>
 
-            <div class="grid gap-8 lg:grid-cols-2">
-                <!-- ── Image Gallery ────────────────────────────── -->
+            <div class="grid gap-8 lg:grid-cols-[1fr_1fr]">
+                <!-- Gallery -->
                 <div>
-                    <!-- Main image -->
-                    <div class="relative overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-white/5">
-                        <img
-                            v-if="mainImageUrl"
-                            :src="mainImageUrl"
-                            :alt="mainImage?.alt_text || product.name"
-                            class="aspect-square w-full object-cover"
-                        />
-                        <div v-else class="aspect-square flex items-center justify-center text-sm text-black/30 dark:text-white/30">
-                            تصویری موجود نیست
+                    <div class="relative rounded-xl bg-white border border-gray-200 overflow-hidden">
+                        <img v-if="mainImageUrl" :src="mainImageUrl" :alt="mainImage?.alt_text || product.name" class="aspect-square w-full object-cover" @error="onImgError($event)" />
+                        <div v-else class="aspect-square flex items-center justify-center text-sm text-slate-400">
+                            <i class="fa-solid fa-image text-4xl"></i>
                         </div>
-
-                        <!-- Arrows (RTL: right = prev, left = next) -->
-                        <button
-                            v-if="sortedImages.length > 1"
-                            type="button"
-                            class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white backdrop-blur-sm hover:bg-black/50"
-                            @click="prevImage"
-                        >
-                            &#8594;
+                        <button v-if="sortedImages.length > 1" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center text-ink hover:bg-black/40 transition-colors" @click="prevImage">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
                         </button>
-                        <button
-                            v-if="sortedImages.length > 1"
-                            type="button"
-                            class="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white backdrop-blur-sm hover:bg-black/50"
-                            @click="nextImage"
-                        >
-                            &#8592;
+                        <button v-if="sortedImages.length > 1" type="button" class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/20 backdrop-blur-sm flex items-center justify-center text-ink hover:bg-black/40 transition-colors" @click="nextImage">
+                            <i class="fa-solid fa-chevron-left text-xs"></i>
                         </button>
                     </div>
-
-                    <!-- Thumbnails -->
-                    <div v-if="sortedImages.length > 1" class="mt-3 flex gap-2 overflow-x-auto">
-                        <button
-                            v-for="(img, idx) in sortedImages"
-                            :key="img.id"
-                            type="button"
-                            class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border-2 transition"
-                            :class="idx === mainImageIndex ? 'border-plum dark:border-rose' : 'border-transparent'"
-                            @click="selectImage(idx)"
-                        >
-                            <img
-                                :src="`/storage/${img.path}`"
-                                :alt="img.alt_text || product.name"
-                                class="h-full w-full object-cover"
-                            />
+                    <div v-if="sortedImages.length > 1" class="mt-2.5 flex gap-2 overflow-x-auto no-scrollbar">
+                        <button v-for="(img, idx) in sortedImages" :key="img.id" type="button" class="h-14 w-14 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-colors" :class="idx === mainImageIndex ? 'border-brand-accent' : 'border-gray-200 hover:border-gray-400'" @click="selectImage(idx)">
+                            <img :src="`/storage/${img.path}`" :alt="img.alt_text || product.name" class="h-full w-full object-cover" @error="onImgError($event)" />
                         </button>
                     </div>
                 </div>
 
-                <!-- ── Product Info ──────────────────────────────── -->
-                <div>
-                    <h1 class="text-2xl font-bold">{{ product.name }}</h1>
+                <!-- Product Info -->
+                <div class="space-y-4">
+                    <h1 class="text-xl sm:text-2xl font-black text-ink leading-relaxed">{{ product.name }}</h1>
 
-                    <p v-if="displaySku" class="mt-2 text-xs text-black/40 dark:text-white/40">
-                        SKU: {{ displaySku }}
-                    </p>
+                    <p v-if="displaySku" class="text-[11px] text-slate-500 font-mono">SKU: {{ displaySku }}</p>
 
                     <!-- Price -->
-                    <div class="mt-4 flex items-baseline gap-3">
-                        <span class="text-xl font-bold text-plum dark:text-rose">
-                            {{ formatPrice(displayPrice) }} تومان
-                        </span>
-                        <span
-                            v-if="displayCompareAtPrice"
-                            class="text-sm text-black/40 line-through dark:text-white/40"
-                        >
-                            {{ formatPrice(displayCompareAtPrice) }} تومان
-                        </span>
+                    <div class="flex items-baseline gap-3">
+                        <span class="text-xl font-black text-brand-accent font-mono">{{ formatPrice(displayPrice) }} <span class="text-xs font-sans text-slate-500">تومان</span></span>
+                        <span v-if="displayCompareAtPrice" class="text-xs text-slate-500 line-through font-mono">{{ formatPrice(displayCompareAtPrice) }}</span>
                     </div>
 
                     <!-- Stock -->
-                    <div class="mt-3">
-                        <span
-                            v-if="displayInStock"
-                            class="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        >
-                            <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                            موجود
+                    <div class="flex items-center gap-2">
+                        <span v-if="displayInStock" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-400 font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> موجود
                         </span>
-                        <span
-                            v-else
-                            class="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                        >
-                            <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span>
-                            ناموجود
+                        <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-[11px] text-red-400 font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> ناموجود
                         </span>
-                        <span
-                            v-if="displayInStock && displayStock !== null"
-                            class="mr-2 text-xs text-black/40 dark:text-white/40"
-                        >
-                            ({{ displayStock }})
-                        </span>
+                        <span v-if="displayInStock && displayStock !== null" class="text-[10px] text-slate-500">({{ displayStock }} عدد)</span>
                     </div>
 
-                    <!-- Variant selection prompt -->
-                    <p
-                        v-if="needsVariantSelection"
-                        class="mt-3 text-xs text-amber-600 dark:text-amber-400"
-                    >
-                        لطفاً ویژگی‌های محصول را انتخاب کنید.
+                    <p v-if="needsVariantSelection" class="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <i class="fa-solid fa-exclamation-triangle ml-1"></i> لطفاً ویژگی‌های محصول را انتخاب کنید.
                     </p>
 
-                    <!-- Short description -->
-                    <p v-if="product.short_description" class="mt-4 text-sm leading-relaxed text-black/70 dark:text-white/70">
-                        {{ product.short_description }}
-                    </p>
+                    <p v-if="product.short_description" class="text-xs text-slate-600 leading-relaxed">{{ product.short_description }}</p>
 
-                    <!-- ── Variant Selector ──────────────────────── -->
-                    <div v-if="hasVariants && attributeAxes.length" class="mt-6 space-y-4">
+                    <!-- Variant Selector -->
+                    <div v-if="hasVariants && attributeAxes.length" class="space-y-3 pt-2">
                         <div v-for="axis in attributeAxes" :key="axis.slug">
-                            <p class="mb-2 text-xs font-medium text-black/60 dark:text-white/60">
-                                {{ axis.slug }}
-                            </p>
-                            <div class="flex flex-wrap gap-2">
-                                <button
-                                    v-for="val in axis.values"
-                                    :key="val.id"
-                                    type="button"
-                                    :disabled="!isValueSelectable(axis.slug, val.id)"
-                                    class="rounded-lg border px-3 py-1.5 text-xs transition"
-                                    :class="selectedVariants[axis.slug] === String(val.id)
-                                        ? 'border-plum bg-plum text-white dark:border-rose dark:bg-rose dark:text-ink'
-                                        : 'border-black/15 bg-white dark:border-white/20 dark:bg-white/10'
-                                    "
-                                    :style="val.hex_color ? { '--tw-border-opacity': 1 } : {}"
-                                    @click="onVariantSelect(axis.slug, val.id)"
-                                >
-                                    <span
-                                        v-if="val.hex_color"
-                                        class="ml-1 inline-block h-3 w-3 rounded-full border border-black/10"
-                                        :style="{ backgroundColor: val.hex_color }"
-                                    ></span>
+                            <p class="mb-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ axis.slug }}</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="val in axis.values" :key="val.id" type="button" :disabled="!isValueSelectable(axis.slug, val.id)" class="rounded-lg border px-3 py-1.5 text-[11px] transition-colors" :class="selectedVariants[axis.slug] === String(val.id) ? 'bg-brand-accent text-dark-900 border-brand-accent font-bold' : 'border-gray-200 text-ink hover:border-slate-600 disabled:opacity-30'" @click="onVariantSelect(axis.slug, val.id)">
+                                    <span v-if="val.hex_color" class="ml-1 inline-block w-3 h-3 rounded-full border border-gray-300" :style="{ backgroundColor: val.hex_color }"></span>
                                     {{ val.label }}
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ── Add to Cart (placeholder) ─────────────── -->
-                    <div class="mt-8 flex items-center gap-3">
-                        <div class="flex items-center rounded-lg border border-black/15 dark:border-white/20">
-                            <button
-                                type="button"
-                                class="px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10"
-                                @click="quantity = Math.max(1, quantity - 1)"
-                            >
-                                −
-                            </button>
-                            <span class="min-w-[2rem] text-center text-sm">{{ quantity }}</span>
-                            <button
-                                type="button"
-                                class="px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10"
-                                @click="quantity++"
-                            >
-                                +
-                            </button>
+                    <!-- Add to Cart -->
+                    <div class="flex items-center gap-3 pt-3">
+                        <div class="flex items-center rounded-lg border border-gray-200">
+                            <button type="button" class="px-3 py-2 text-sm text-ink hover:bg-gray-100 transition-colors" @click="quantity = Math.max(1, quantity - 1)">−</button>
+                            <span class="min-w-[2rem] text-center text-sm font-mono">{{ quantity }}</span>
+                            <button type="button" class="px-3 py-2 text-sm text-ink hover:bg-gray-100 transition-colors" @click="quantity++">+</button>
                         </div>
-                        <button
-                            type="button"
-                            disabled
-                            class="flex-1 rounded-xl bg-plum px-6 py-3 text-sm font-medium text-white opacity-50 cursor-not-allowed dark:bg-rose dark:text-ink"
-                        >
-                            افزودن به سبد خرید
+                        <button type="button" disabled class="flex-1 rounded-lg bg-brand-accent text-dark-900 py-2.5 text-sm font-bold opacity-50 cursor-not-allowed shadow-glow-yellow">
+                            <i class="fa-solid fa-cart-plus ml-1.5 text-xs"></i> افزودن به سبد خرید
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- ── Attributes ──────────────────────────────────── -->
-            <div
-                v-if="displayAttributes.length || (product.custom_attributes && product.custom_attributes.length)"
-                class="mt-12"
-            >
-                <h2 class="mb-4 text-lg font-bold">مشخصات محصول</h2>
-                <div class="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
+            <!-- Specifications -->
+<div v-if="displayAttributes.length || product.custom_attributes?.length" class="mt-12">
+                    <h2 class="mb-4 text-lg font-black text-ink">مشخصات محصول</h2>
+                    <div class="rounded-xl border border-gray-200 overflow-hidden">
                     <table class="w-full text-sm">
                         <tbody>
-                            <tr v-for="attr in displayAttributes" :key="attr.slug" class="border-b border-black/5 dark:border-white/5">
-                                <td class="w-1/3 bg-black/5 px-4 py-3 font-medium dark:bg-white/5">{{ attr.slug }}</td>
-                                <td class="px-4 py-3">{{ attr.values.map((v) => v.label).join('، ') }}</td>
+                            <tr v-for="attr in displayAttributes" :key="attr.slug" class="border-b border-gray-200/50 last:border-0">
+                                <td class="w-1/3 bg-white px-4 py-2.5 text-[11px] font-bold text-slate-500">{{ attr.slug }}</td>
+                                <td class="px-4 py-2.5 text-xs text-ink">{{ attr.values.map((v) => v.label).join('، ') }}</td>
                             </tr>
-                            <tr v-for="attr in product.custom_attributes || []" :key="attr.id" class="border-b border-black/5 dark:border-white/5">
-                                <td class="w-1/3 bg-black/5 px-4 py-3 font-medium dark:bg-white/5">{{ attr.name }}</td>
-                                <td class="px-4 py-3">{{ attr.value }}</td>
+                            <tr v-for="attr in product.custom_attributes || []" :key="attr.id" class="border-b border-gray-200/50 last:border-0">
+                                <td class="w-1/3 bg-white px-4 py-2.5 text-[11px] font-bold text-slate-400">{{ attr.name }}</td>
+                                <td class="px-4 py-2.5 text-xs text-ink">{{ attr.value }}</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- ── Description ─────────────────────────────────── -->
+            <!-- Description -->
             <div v-if="product.description" class="mt-12">
-                <h2 class="mb-4 text-lg font-bold">توضیحات</h2>
-                <div class="rounded-2xl border border-black/10 bg-white p-6 text-sm leading-relaxed dark:border-white/10 dark:bg-white/5">
+<h2 class="mb-4 text-lg font-black text-ink">توضیحات</h2>
+                    <div class="rounded-xl border border-gray-200 bg-white p-5 text-xs text-slate-600 leading-relaxed">
                     {{ product.description }}
                 </div>
             </div>
 
-            <!-- ── Vehicle Compatibility ───────────────────────── -->
+            <!-- Vehicle Compatibility -->
             <div v-if="vehicleCompat.length" class="mt-12">
-                <h2 class="mb-4 text-lg font-bold">خودروهای سازگار</h2>
-                <div class="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/5">
-                    <ul class="space-y-3 text-sm">
-                        <li
-                            v-for="(v, idx) in visibleVehicles"
-                            :key="idx"
-                            class="rounded-lg border border-black/5 px-4 py-3 dark:border-white/5"
-                        >
-                            <div class="flex flex-col gap-1">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-semibold text-ink dark:text-rose">{{ v.brand.name }}</span>
-                                </div>
-                                <div class="mr-4 flex items-center gap-2 text-xs text-black/60 dark:text-white/60">
-                                    <span>→</span>
-                                    <span>{{ v.model.name }}</span>
-                                </div>
-                                <div class="mr-4 flex items-center gap-2 text-xs text-black/60 dark:text-white/60">
-                                    <span>→</span>
-                                    <span>{{ v.generation.name }} ({{ v.generation.year_start }}<template v-if="v.generation.year_end">-{{ v.generation.year_end }}</template>)</span>
-                                </div>
-                                <div class="mr-4 flex items-center gap-2 text-xs text-black/50 dark:text-white/50">
-                                    <span>→</span>
-                                    <span>{{ v.trim.name }}</span>
-                                </div>
-                                <div class="mr-4 flex items-center gap-2 text-xs text-black/40 dark:text-white/40">
-                                    <span>→</span>
-                                    <span>{{ v.engine.name }}</span>
-                                </div>
+                <h2 class="mb-4 text-lg font-black text-ink">خودروهای سازگار</h2>
+                <div class="rounded-xl border border-gray-200 bg-white p-4">
+                    <ul class="space-y-2">
+                        <li v-for="(v, idx) in visibleVehicles" :key="idx" class="rounded-lg border border-gray-200/50 px-3 py-2.5">
+                            <div class="flex items-center gap-1.5 text-xs">
+                                <span class="font-bold text-brand-accent">{{ v.brand.name }}</span>
+                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
+                                <span class="text-ink">{{ v.model.name }}</span>
+                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
+                                <span class="text-slate-500">{{ v.generation.name }} ({{ v.generation.year_start }}<template v-if="v.generation.year_end">-{{ v.generation.year_end }}</template>)</span>
+                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
+                                <span class="text-slate-600">{{ v.trim.name }}</span>
+                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
+                                <span class="text-slate-500">{{ v.engine.name }}</span>
                             </div>
                         </li>
                     </ul>
-
-                    <button
-                        v-if="vehicleCompat.length > VEHICLE_SHOW_LIMIT"
-                        type="button"
-                        class="mt-3 text-xs text-plum hover:underline dark:text-rose"
-                        @click="showAllVehicles = !showAllVehicles"
-                    >
+                    <button v-if="vehicleCompat.length > VEHICLE_SHOW_LIMIT" type="button" class="mt-2 text-[11px] text-brand-accent hover:text-brand-hover font-medium transition-colors" @click="showAllVehicles = !showAllVehicles">
                         {{ showAllVehicles ? 'نمایش کمتر' : `نمایش همه (${vehicleCompat.length})` }}
                     </button>
                 </div>
             </div>
         </div>
-    </main>
+
+        <SiteFooter />
+    </div>
 </template>
+
+<style>
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+select { background-image: none; }
+input::placeholder { opacity: 0.7; }
+:focus-visible { outline: 2px solid #FFCD00; outline-offset: 2px; }
+</style>

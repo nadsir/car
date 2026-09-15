@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Vazirmatn:wght@100..900&display=swap");
 @import "tailwindcss";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
@@ -13,26 +14,91 @@
 ========================================================= */
 
 @theme {
-    --color-ink: #211c2b;
-    --color-rose: #eaa8b2;
-    --color-blush: #fff3f4;
-    --color-plum: #7b506f;
-    --color-sand: #f5ede5;
-    --color-cream: #fffaf9;
+    /* Storefront base colors - light industrial */
+    --color-ink: #1a1a1a;
+    --color-rose: #FFCD00;
+    --color-blush: #fffef5;
+    --color-sand: #f0f0ec;
+    --color-cream: #fafaf8;
 
     --font-sans: "Vazirmatn", Tahoma, sans-serif;
 
-    --shadow-soft: 0 20px 70px rgba(78, 53, 82, 0.12);
-    --shadow-card: 0 12px 40px rgba(78, 53, 82, 0.08);
+    --shadow-soft: 0 20px 70px rgba(0, 0, 0, 0.06);
+    --shadow-card: 0 12px 40px rgba(0, 0, 0, 0.04);
+
+    /* Homepage brand colors - Caterpillar yellow */
+    --color-brand-50: #fefce8;
+    --color-brand-100: #fef9c3;
+    --color-brand-400: #FFCD00;
+    --color-brand-500: #FFCD00;
+    --color-brand-600: #e6b800;
+    --color-brand-accent: #FFCD00;
+    --color-brand-hover: #ffe033;
+    --color-brand-glow: rgba(255, 205, 0, 0.35);
+
+    /* Light palette */
+    --color-bg: #fafaf8;
+    --color-bg-card: #ffffff;
+    --color-bg-elevated: #f5f5f2;
+    --color-text: #1a1a1a;
+    --color-text-secondary: #555555;
+    --color-text-muted: #888888;
+    --color-border: #e0e0dc;
+    --color-border-light: #f0f0ec;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
 }
 
 /* =========================================================
-   FONTS
+    DARK MODE
 ========================================================= */
 
+.dark {
+    --color-ink: #e5e5e5;
+    --color-cream: #0c0c0c;
+    --color-sand: #1e1e1e;
+    --color-blush: #111111;
+
+    --color-bg: #0c0c0c;
+    --color-bg-card: #161616;
+    --color-bg-elevated: #1e1e1e;
+    --color-text: #e5e5e5;
+    --color-text-secondary: #999999;
+    --color-text-muted: #666666;
+    --color-border: #2a2a2a;
+    --color-border-light: #222222;
+
+    --color-white: #161616;
+    --color-black: #e5e5e5;
+
+    --color-gray-50: #161616;
+    --color-gray-100: #1e1e1e;
+    --color-gray-200: #2a2a2a;
+    --color-gray-300: #3a3a3a;
+    --color-gray-400: #555555;
+    --color-gray-500: #777777;
+    --color-gray-600: #999999;
+    --color-gray-700: #bbbbbb;
+    --color-gray-800: #dddddd;
+    --color-gray-900: #f0f0f0;
+
+    --color-slate-50: #141414;
+    --color-slate-100: #1c1c1c;
+    --color-slate-200: #2a2a2a;
+    --color-slate-300: #3a3a3a;
+    --color-slate-400: #555555;
+    --color-slate-500: #777777;
+    --color-slate-600: #999999;
+    --color-slate-700: #bbbbbb;
+    --color-slate-800: #dddddd;
+    --color-slate-900: #f0f0f0;
+}
 
 /* =========================================================
-   BASE
+    BASE
 ========================================================= */
 
 html {
@@ -42,13 +108,8 @@ html {
 body {
     margin: 0;
     font-family: "Vazirmatn", Tahoma, sans-serif;
-    background: #fffaf9;
-    color: #211c2b;
-}
-
-html.dark body {
-    background: #1c1721;
-    color: #ffffff;
+    background: var(--color-cream);
+    color: var(--color-ink);
 }
 
 .serif {
@@ -67,7 +128,7 @@ button {
 }
 
 /* =========================================================
-   SCROLLBAR
+    SCROLLBAR
 ========================================================= */
 
 .no-scrollbar {
@@ -81,7 +142,7 @@ button {
 
 .filter-scroll {
     scrollbar-width: thin;
-    scrollbar-color: rgba(123, 80, 111, 0.25) transparent;
+    scrollbar-color: rgba(26, 26, 26, 0.2) transparent;
 }
 
 .filter-scroll::-webkit-scrollbar {
@@ -93,12 +154,12 @@ button {
 }
 
 .filter-scroll::-webkit-scrollbar-thumb {
-    background: rgba(123, 80, 111, 0.25);
+    background: rgba(26, 26, 26, 0.2);
     border-radius: 999px;
 }
 
 /* =========================================================
-   PRODUCT CARD
+    PRODUCT CARD
 ========================================================= */
 
 .product-card:hover .product-image {
@@ -123,7 +184,7 @@ button {
 }
 
 /* =========================================================
-   FILTER OPTIONS
+    FILTER OPTIONS
 ========================================================= */
 
 .filter-option {
@@ -134,23 +195,17 @@ button {
 }
 
 .filter-option:hover {
-    border-color: rgba(123, 80, 111, 0.4);
+    border-color: rgba(26, 26, 26, 0.15);
 }
 
 .filter-option.active {
-    background: #211c2b;
-    color: #ffffff;
-    border-color: #211c2b;
-}
-
-html.dark .filter-option.active {
-    background: #eaa8b2;
-    color: #211c2b;
-    border-color: #eaa8b2;
+    background: #FFCD00;
+    color: #1a1a1a;
+    border-color: #FFCD00;
 }
 
 /* =========================================================
-   CHECKBOX
+    CHECKBOX
 ========================================================= */
 
 .check {
@@ -160,7 +215,7 @@ html.dark .filter-option.active {
     width: 16px;
     height: 16px;
 
-    border: 1px solid rgba(33, 28, 43, 0.25);
+    border: 1px solid rgba(26, 26, 26, 0.25);
     border-radius: 4px;
 
     background: transparent;
@@ -174,39 +229,26 @@ html.dark .filter-option.active {
 }
 
 .check::after {
-    content: "✓";
+    content: "\2713";
 
     font-size: 10px;
-    color: white;
+    color: var(--color-ink);
 
     transform: scale(0);
     transition: transform 0.15s ease;
 }
 
 .check:checked {
-    background: #211c2b;
-    border-color: #211c2b;
+    background: #FFCD00;
+    border-color: #FFCD00;
 }
 
 .check:checked::after {
     transform: scale(1);
 }
 
-html.dark .check {
-    border-color: rgba(255, 255, 255, 0.25);
-}
-
-html.dark .check:checked {
-    background: #eaa8b2;
-    border-color: #eaa8b2;
-}
-
-html.dark .check::after {
-    color: #211c2b;
-}
-
 /* =========================================================
-   PRICE RANGE
+    PRICE RANGE
 ========================================================= */
 
 .price-range {
@@ -216,7 +258,7 @@ html.dark .check::after {
     height: 4px;
     border-radius: 999px;
 
-    background: rgba(33, 28, 43, 0.12);
+    background: rgba(26, 26, 26, 0.12);
 
     outline: none;
 }
@@ -230,10 +272,10 @@ html.dark .check::after {
 
     border-radius: 50%;
 
-    background: #211c2b;
-    border: 3px solid #fffaf9;
+    background: var(--color-ink);
+    border: 3px solid var(--color-cream);
 
-    box-shadow: 0 2px 8px rgba(33, 28, 43, 0.2);
+    box-shadow: 0 2px 8px rgba(26, 26, 26, 0.15);
 
     cursor: pointer;
 }
@@ -244,30 +286,16 @@ html.dark .check::after {
 
     border-radius: 50%;
 
-    background: #211c2b;
-    border: 3px solid #fffaf9;
+    background: var(--color-ink);
+    border: 3px solid var(--color-cream);
 
-    box-shadow: 0 2px 8px rgba(33, 28, 43, 0.2);
+    box-shadow: 0 2px 8px rgba(26, 26, 26, 0.15);
 
     cursor: pointer;
 }
 
-html.dark .price-range {
-    background: rgba(255, 255, 255, 0.15);
-}
-
-html.dark .price-range::-webkit-slider-thumb {
-    background: #eaa8b2;
-    border-color: #1c1721;
-}
-
-html.dark .price-range::-moz-range-thumb {
-    background: #eaa8b2;
-    border-color: #1c1721;
-}
-
 /* =========================================================
-   COLOR FILTER
+    COLOR FILTER
 ========================================================= */
 
 .color-filter,
@@ -285,19 +313,12 @@ html.dark .price-range::-moz-range-thumb {
 .color-filter.active,
 .mobile-color-filter.active {
     box-shadow:
-        0 0 0 2px #fffaf9,
-        0 0 0 4px #7b506f;
-}
-
-html.dark .color-filter.active,
-html.dark .mobile-color-filter.active {
-    box-shadow:
-        0 0 0 2px #1c1721,
-        0 0 0 4px #eaa8b2;
+        0 0 0 2px #fafaf8,
+        0 0 0 4px #1a1a1a;
 }
 
 /* =========================================================
-   MOBILE FILTER SHEET
+    MOBILE FILTER SHEET
 ========================================================= */
 
 .overlay {
@@ -331,25 +352,21 @@ html.dark .mobile-color-filter.active {
 }
 
 /* =========================================================
-   DARK MODE
+    SELECT LIGHT MODE
 ========================================================= */
 
-html.dark {
-    color-scheme: dark;
+select {
+    color: var(--color-ink);
+    background-color: var(--color-white);
 }
 
-html.dark select {
-    color: #ffffff;
-    background-color: #241d27;
-}
-
-html.dark select option {
-    background: #241d27;
-    color: #ffffff;
+select option {
+    background: var(--color-white);
+    color: var(--color-ink);
 }
 
 /* =========================================================
-   ANIMATION
+    ANIMATION
 ========================================================= */
 
 .fade-in {

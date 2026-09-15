@@ -1039,27 +1039,29 @@ async function submitProduct() {
             product = await updateProduct();
         } else {
             product = await save();
+        }
 
-            const productId = product?.id;
+        const productId =
+            editingProductId.value ||
+            product?.id;
 
-            if (
-                productId &&
-                selectedImageFiles.value.length
+        if (
+            productId &&
+            selectedImageFiles.value.length
+        ) {
+            imageUploading.value = true;
+
+            for (
+                const file of selectedImageFiles.value
             ) {
-                imageUploading.value = true;
-
-                for (
-                    const file of selectedImageFiles.value
-                ) {
-                    await uploadProductImage(
-                        productId,
-                        file,
-                        imageAltText.value
-                    );
-                }
-
-                imageUploading.value = false;
+                await uploadProductImage(
+                    productId,
+                    file,
+                    imageAltText.value
+                );
             }
+
+            imageUploading.value = false;
         }
 
         successMessage.value =
