@@ -1,9 +1,17 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import axios from 'axios';
 import SiteHeader from './SiteHeader.vue';
 import SiteFooter from './SiteFooter.vue';
 import { addToCart } from './cart-state.js';
+import { state as authState, isLoggedIn } from './auth-state.js';
+import {
+    state as wishlistState,
+    loadWishlist,
+    isInWishlist,
+    addToWishlist,
+    removeFromWishlist,
+} from './wishlist-state.js';
 
 const product = ref(null);
 const loading = ref(true);
@@ -14,6 +22,41 @@ const showAllVehicles = ref(false);
 const VEHICLE_SHOW_LIMIT = 5;
 
 const selectedVariants = reactive({});
+
+const inWishlist = computed(() =>
+    isLoggedIn.value && product.value ? isInWishlist(product.value.id) : false
+);
+const wishlistLabel = computed(() => {
+    if (!isLoggedIn.value) return 'برای افزودن به علاقه‌مندی‌ها وارد حساب شوید';
+    if (wishlistState.loading) return 'در حال به‌روزرسانی علاقه‌مندی‌ها';
+    return inWishlist.value ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها';
+});
+
+// Also handle authentication finishing after the product has loaded.
+watch([() => product.value?.id, () => authState.user?.id], ([productId, userId]) => {
+    if (productId && userId) loadWishlist();
+}, { immediate: true });
+
+watch(() => wishlistState.error, (wishlistError) => {
+    if (!wishlistError || !isLoggedIn.value || !product.value) return;
+    window.dispatchEvent(new CustomEvent('toast', {
+        detail: {
+            message: wishlistError.message,
+            title: 'خطای علاقه‌مندی‌ها',
+            type: 'error',
+        },
+    }));
+});
+
+async function toggleWishlist() {
+    if (!isLoggedIn.value || !product.value || wishlistState.loading) return;
+
+    if (isInWishlist(product.value.id)) {
+        await removeFromWishlist(product.value.id);
+    } else {
+        await addToWishlist(product.value.id);
+    }
+}
 
 function formatPrice(price) {
     return Number(price || 0).toLocaleString('fa-IR');
@@ -279,6 +322,22 @@ onMounted(fetchProduct);
                             </div>
                         </div>
                     </div>
+
+                    <button
+                        type="button"
+                        :disabled="!isLoggedIn || wishlistState.loading"
+                        :aria-pressed="inWishlist"
+                        :aria-busy="wishlistState.loading"
+                        :aria-label="wishlistLabel"
+                        :title="wishlistLabel"
+                        class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        :class="inWishlist ? 'border-brand-accent text-brand-accent bg-white' : 'border-gray-200 text-slate-500 hover:border-gray-400'"
+                        @click="toggleWishlist"
+                    >
+                        <i v-if="wishlistState.loading" class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+                        <span v-else class="text-xl leading-none" aria-hidden="true">{{ inWishlist ? '♥' : '♡' }}</span>
+                        <span>{{ wishlistLabel }}</span>
+                    </button>
 
                     <!-- Add to Cart -->
                     <div class="flex items-center gap-3 pt-3">
