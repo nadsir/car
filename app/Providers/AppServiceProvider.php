@@ -11,7 +11,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(\App\Contracts\SmsServiceInterface::class, function () {
+            return match (config('sms.driver')) {
+                'log' => new \App\Services\Sms\LogSmsService(),
+                'http' => new \App\Services\Sms\HttpSmsService(),
+                default => throw new \RuntimeException('Unsupported SMS driver.'),
+            };
+        });
+
+        $this->app->bind(
+            \App\Contracts\PaymentGatewayInterface::class,
+            \App\Services\Payment\FakePaymentGateway::class,
+        );
     }
 
     /**
