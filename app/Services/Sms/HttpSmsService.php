@@ -5,24 +5,42 @@ namespace App\Services\Sms;
 use App\Contracts\SmsServiceInterface;
 use Illuminate\Support\Facades\Http;
 
-// Generic adapter for an SMS relay accepting {mobile, message} JSON.
 class HttpSmsService implements SmsServiceInterface
 {
     public function sendOtp(string $mobile, string $code): void
     {
         $url = config('sms.endpoint');
-        $token = config('sms.token');
-        if (!$url || !str_starts_with($url, 'https://') || !$token) {
-            throw new \RuntimeException('HTTPS SMS endpoint and token must be configured.');
+        $apiKey = config('sms.token');
+        $templateId = config('sms.template_id');
+
+        if (
+            !$url ||
+            !str_starts_with($url, 'https://') ||
+            !$apiKey ||
+            !$templateId
+        ) {
+            throw new \RuntimeException(
+                'SMS.ir endpoint, API key and template ID must be configured.'
+            );
         }
-        $response = Http::withToken($token)->acceptJson()->connectTimeout(3)->timeout(8)
-            ->withOptions(['allow_redirects' => false])
+
+        Http::withHeaders([
+            'X-API-KEY' => $apiKey,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ])
+            ->connectTimeout(5)
+            ->timeout(10)
             ->post($url, [
-                'mobile' => $mobile,
-                'message' => "کد ورود شما: {$code}\nاعتبار: ۲ دقیقه. این کد را در اختیار دیگران قرار ندهید.",
-            ])->throw();
-        if (!$response->successful()) {
-            throw new \RuntimeException('SMS relay rejected delivery.');
-        }
+                'Mobile' => $mobile,
+                'TemplateId' => (int) $templateId,
+                'Parameters' => [
+                    [
+                        'Name' => 'CODE',
+                        'Value' => $code,
+                    ],
+                ],
+            ])
+            ->throw();
     }
 }
