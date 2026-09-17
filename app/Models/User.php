@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Support\IranianMobile;
 
 class User extends Authenticatable
 {
@@ -23,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'mobile',
     ];
 
     /**
@@ -34,6 +36,11 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    public function setMobileAttribute(?string $value): void
+    {
+        $this->attributes['mobile'] = $value === null ? null : IranianMobile::normalize($value);
+    }
 
     public function orders(): HasMany
     {

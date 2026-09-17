@@ -27,9 +27,14 @@ Route::post('/customer/register', [CustomerAuthController::class, 'register'])
     ->middleware('throttle:10,1');
 Route::post('/customer/login', [CustomerAuthController::class, 'login'])
     ->middleware('throttle:10,1');
+Route::post('/customer/send-otp', [CustomerAuthController::class, 'sendOtp'])
+    ->middleware('throttle:10,1');
+Route::post('/customer/verify-otp', [CustomerAuthController::class, 'verifyOtp'])
+    ->middleware('throttle:30,1');
 Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
     Route::get('/orders', [CustomerOrderController::class, 'index']);
     Route::get('/orders/{order}', [CustomerOrderController::class, 'show'])->whereNumber('order');
+    Route::patch('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel'])->whereNumber('order');
     Route::post('/checkout', [CustomerCheckoutController::class, 'store']);
     Route::get('/me', [CustomerAuthController::class, 'me']);
     Route::post('/logout', [CustomerAuthController::class, 'logout']);

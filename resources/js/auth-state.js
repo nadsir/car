@@ -69,12 +69,26 @@ async function login(email, password) {
     return data;
 }
 
-async function register(name, email, password, passwordConfirmation) {
+async function sendOtp(mobile) {
+    const { data } = await axios.post('/api/customer/send-otp', { mobile });
+    return data;
+}
+
+async function verifyOtp(mobile, code) {
+    const { data } = await axios.post('/api/customer/verify-otp', { mobile, code });
+    setToken(data.token);
+    applyToken(data.token);
+    state.user = data.user;
+    return data;
+}
+
+async function register(name, email, password, passwordConfirmation, mobile) {
     const { data } = await axios.post('/api/customer/register', {
         name,
         email,
         password,
         password_confirmation: passwordConfirmation,
+        mobile,
     });
 
     setToken(data.token);
@@ -119,6 +133,8 @@ export {
     isLoggedIn,
     loadUser,
     login,
+    sendOtp,
+    verifyOtp,
     register,
     logout,
     updateProfile,

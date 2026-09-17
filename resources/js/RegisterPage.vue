@@ -6,6 +6,7 @@ import { register, isLoggedIn } from './auth-state.js';
 
 const name = ref('');
 const email = ref('');
+const mobile = ref('');
 const password = ref('');
 const passwordConfirmation = ref('');
 const loading = ref(false);
@@ -22,7 +23,7 @@ async function onSubmit() {
     loading.value = true;
 
     try {
-        await register(name.value, email.value, password.value, passwordConfirmation.value);
+        await register(name.value, email.value, password.value, passwordConfirmation.value, mobile.value);
         window.location.href = '/account';
     } catch (e) {
         const msg = e.response?.data?.message;
@@ -63,6 +64,11 @@ async function onSubmit() {
                 </div>
 
                 <form class="space-y-4" @submit.prevent="onSubmit">
+                    <div>
+                        <label for="register-mobile" class="block text-[11px] font-bold text-slate-500 mb-1.5">شماره موبایل</label>
+                        <input id="register-mobile" v-model="mobile" type="tel" required autocomplete="tel" dir="ltr" maxlength="32" placeholder="09121234567" :aria-invalid="!!fieldErrors.mobile" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-ink focus:border-brand-accent/60 focus:outline-none" />
+                        <p v-if="fieldErrors.mobile" class="mt-1 text-xs text-red-600">{{ fieldErrors.mobile[0] }}</p>
+                    </div>
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 mb-1.5">نام</label>
                         <input
