@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AdminAuthController;
 use App\Http\Controllers\Api\AdminAttributeController;
 use App\Http\Controllers\Api\AdminProductController;
 use App\Http\Controllers\Api\AdminVehicleController;
+use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\FilteredProductController;
 use App\Http\Controllers\Api\ProductDetailController;
 use App\Http\Controllers\Api\AdminProductImageController;
@@ -17,7 +18,7 @@ use App\Http\Controllers\Api\CustomerCheckoutController;
 use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerWishlistController;
 use App\Http\Controllers\Api\PaymentController;
-use App\Http\Controllers\Api\VehicleController;
+use App\Http\Controllers\Api\AdminOrderController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -70,6 +71,9 @@ Route::post('/admin/login', [AdminAuthController::class, 'login'])
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     Route::get('/me', [AdminAuthController::class, 'me']);
     Route::post('/logout', [AdminAuthController::class, 'logout']);
+    Route::get('/orders', [AdminOrderController::class, 'index']);
+    Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->whereNumber('order');
+    Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->whereNumber('order');
     Route::get('/categories', [AdminCategoryController::class, 'index']);
     Route::post('/categories', [AdminCategoryController::class, 'store']);
     Route::get('/categories/{category}', [AdminCategoryController::class, 'show']);

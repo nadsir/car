@@ -78,7 +78,22 @@ import {
     productTotal,
     loadAdminProducts,
     loadMeta,
+    adminOrders,
+    adminOrder,
+    adminOrderLoading,
+    adminOrderError,
+    adminOrderSearch,
+    adminOrderStatusFilter,
+    adminOrderPage,
+    adminOrderTotalPages,
+    adminOrderTotal,
+    loadAdminOrders,
+    loadAdminOrder,
+    getStatusLabel,
 } from './admin-state';
+
+import AdminOrdersPage from './AdminOrdersPage.vue';
+import AdminOrderDetailPage from './AdminOrderDetailPage.vue';
 
 
 async function openEditProduct(id) {
@@ -163,6 +178,10 @@ const compatSelectedGeneration = ref(null);
 const compatSelectedTrim = ref(null);
 const compatSelectedEngine = ref(null);
 
+// ── Orders State ───────────────────────────────────────────────
+const selectedOrderId = ref(null);
+const showOrderDetail = ref(false);
+
 /*
 |--------------------------------------------------------------------------
 | Navigation
@@ -179,6 +198,11 @@ const nav = [
         key: 'products',
         label: 'محصولات',
         icon: '◈',
+    },
+    {
+        key: 'orders',
+        label: 'سفارش‌ها',
+        icon: '📦',
     },
     {
         key: 'categories',
@@ -1529,6 +1553,20 @@ async function changeSection(value) {
     if (value === 'vehicles') {
         loadVehicleBrands();
     }
+    if (value === 'orders') {
+        loadAdminOrders();
+    }
+}
+
+function openOrderDetail(orderId) {
+    selectedOrderId.value = orderId;
+    showOrderDetail.value = true;
+    loadAdminOrder(orderId);
+}
+
+function closeOrderDetail() {
+    showOrderDetail.value = false;
+    selectedOrderId.value = null;
 }
 
 onMounted(async () => {
@@ -1546,6 +1584,10 @@ onMounted(async () => {
         errorMessage.value =
             'دریافت اطلاعات پنل مدیریت انجام نشد.';
     }
+
+    window.addEventListener('admin-open-order', (e) => {
+        openOrderDetail(e.detail);
+    });
 });
 </script>
 
@@ -2872,6 +2914,22 @@ onMounted(async () => {
                             </div>
                         </div>
                     </div>
+                </section>
+
+                <!-- ================================================= -->
+                <!-- ORDERS -->
+                <!-- ================================================= -->
+
+                <section
+                    v-else-if="section === 'orders'"
+                >
+                    <AdminOrdersPage @open-detail="openOrderDetail" />
+                </section>
+
+                <section
+                    v-else-if="showOrderDetail"
+                >
+                    <AdminOrderDetailPage :order-id="selectedOrderId" @back="closeOrderDetail" />
                 </section>
 
                 <!-- ================================================= -->
@@ -5950,6 +6008,392 @@ onMounted(async () => {
 .compat-cascading-selects select:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* =========================================================
+   ORDERS (ADMIN)
+   ========================================================= */
+
+.orders-section {
+    max-width: 100%;
+}
+
+.orders-filters {
+    margin-bottom: 20px;
+}
+
+.orders-search-bar {
+    margin-bottom: 14px;
+}
+
+.orders-filter-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 10px 14px;
+    border: 1px solid #e3e4eb;
+    border-radius: 9px;
+    background: #fff;
+    color: #25273a;
+    font-family: inherit;
+    font-size: 13px;
+    min-width: 180px;
+}
+
+.orders-table-wrapper {
+    overflow-x: auto;
+}
+
+.orders-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.orders-table th,
+.orders-table td {
+    padding: 12px 14px;
+    text-align: right;
+    border-bottom: 1px solid #f0f1f5;
+}
+
+.orders-table th {
+    background: #fafbfc;
+    color: #5c5e71;
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.orders-table tbody tr:hover {
+    background: #fafbfc;
+}
+
+.order-id {
+    font-family: monospace;
+    font-size: 12px;
+    color: #6563d9;
+}
+
+.customer-cell {
+    min-width: 180px;
+}
+
+.customer-name {
+    font-weight: 600;
+    color: #25273a;
+}
+
+.customer-email {
+    font-size: 11px;
+    color: #85869c;
+    margin-top: 2px;
+}
+
+.amount {
+    font-weight: 600;
+    color: #25273a;
+}
+
+.payment-status {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.payment-status.paid {
+    color: #1d9a5c;
+}
+
+.payment-status.unpaid {
+    color: #c9545e;
+}
+
+.payment-method {
+    font-size: 10px;
+    color: #999aae;
+    margin-right: 6px;
+}
+
+.date-cell {
+    white-space: nowrap;
+    color: #5c5e71;
+    font-size: 12px;
+}
+
+.items-count {
+    color: #5c5e71;
+    font-size: 12px;
+}
+
+.btn-view {
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: #6563d9;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: .15s ease;
+}
+
+.btn-view:hover {
+    background: #5552c9;
+}
+
+.order-detail-section {
+    max-width: 100%;
+}
+
+.panel-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.order-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: #fafbfc;
+    border: 1px solid #eef0f5;
+    border-radius: 12px;
+}
+
+.status-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-label {
+    font-size: 13px;
+    color: #5c5e71;
+}
+
+.order-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.order-info-panel,
+.payment-info-panel,
+.customer-info-panel,
+.order-items-panel,
+.payment-attempts-panel {
+    background: #fff;
+    border: 1px solid #eef0f5;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.panel-title {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #25273a;
+}
+
+.info-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.info-list dt {
+    color: #5c5e71;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.info-list dd {
+    margin: 0;
+    color: #25273a;
+    font-size: 13px;
+}
+
+.whitespace-pre-line {
+    white-space: pre-line;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 0;
+}
+
+.info-grid dt {
+    color: #5c5e71;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.info-grid dd {
+    margin: 0;
+    color: #25273a;
+    font-size: 13px;
+}
+
+.col-span-2 {
+    grid-column: 1 / -1;
+}
+
+.items-table,
+.attempts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.items-table th,
+.items-table td,
+.attempts-table th,
+.attempts-table td {
+    padding: 10px 12px;
+    text-align: right;
+    border-bottom: 1px solid #f0f1f5;
+}
+
+.items-table th,
+.attempts-table th {
+    background: #fafbfc;
+    color: #5c5e71;
+    font-weight: 600;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.item-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.item-thumb {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #eef0f5;
+}
+
+.item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.item-name {
+    font-weight: 600;
+    color: #25273a;
+}
+
+.item-attrs {
+    font-size: 11px;
+    color: #85869c;
+}
+
+.form-select,
+.form-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 11px;
+    border: 1px solid #e3e4eb;
+    border-radius: 9px;
+    background: #fff;
+    color: #25273a;
+    font-family: inherit;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    padding: 30px;
+    background: rgba(17, 18, 32, .62);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal {
+    width: min(500px, 100%);
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 22px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .2);
+}
+
+.modal-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fff;
+    padding: 20px 24px;
+    border-bottom: 1px solid #eeeeF4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-head h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.modal-close {
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 10px;
+    background: #f2f3f7;
+    color: #5c5e71;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    background: #e5e6ed;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+@media (max-width: 800px) {
+    .order-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .orders-table th:nth-child(5),
+    .orders-table td:nth-child(5),
+    .orders-table th:nth-child(6),
+    .orders-table td:nth-child(6) {
+        display: none;
+    }
 }
 
 }

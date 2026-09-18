@@ -683,3 +683,116 @@ export async function attachProductCompatibility(productId, engineIds) {
 export async function detachProductCompatibility(productId, engineId) {
     await axios.delete(`/api/admin/products/${productId}/vehicle-compat/${engineId}`);
 }
+
+/*
+|--------------------------------------------------------------------------
+| Orders (Admin)
+|--------------------------------------------------------------------------
+*/
+
+export const adminOrders = ref([]);
+export const adminOrder = ref(null);
+export const adminOrderLoading = ref(false);
+export const adminOrderError = ref('');
+
+export const adminOrderSearch = ref('');
+export const adminOrderStatusFilter = ref('');
+export const adminOrderPage = ref(1);
+export const adminOrderTotalPages = ref(1);
+export const adminOrderTotal = ref(0);
+
+export async function loadAdminOrders() {
+    adminOrderLoading.value = true;
+    adminOrderError.value = '';
+
+    try {
+        const params = {
+            page: adminOrderPage.value,
+        };
+
+        if (adminOrderSearch.value) {
+            params.search = adminOrderSearch.value;
+        }
+
+        if (adminOrderStatusFilter.value) {
+            params.status = adminOrderStatusFilter.value;
+        }
+
+        const response = await axios.get('/api/admin/orders', { params });
+
+        adminOrders.value = response.data.data || [];
+        adminOrderTotalPages.value = response.data.last_page || 1;
+        adminOrderTotal.value = response.data.total || 0;
+
+        if (adminOrderPage.value > adminOrderTotalPages.value) {
+            adminOrderPage.value = adminOrderTotalPages.value;
+        }
+    } catch (error) {
+        adminOrderError.value = error.response?.data?.message || 'دریافت سفارش‌ها انجام نشد.';
+    } finally {
+        adminOrderLoading.value = false;
+    }
+}
+
+export async function loadAdminOrder(id) {
+    adminOrderLoading.value = true;
+    adminOrderError.value = '';
+    adminOrder.value = null;
+
+    try {
+        const response = await axios.get(`/api/admin/orders/${id}`);
+        adminOrder.value = response.data.order || null;
+        return adminOrder.value;
+    } catch (error) {
+        adminOrderError.value = error.response?.data?.message || 'دریافت سفارش انجام نشد.';
+    } finally {
+        adminOrderLoading.value = false;
+    }
+}
+
+export async function updateAdminOrderStatus(id, status, cancelledReason = null) {
+    adminOrderLoading.value = true;
+    adminOrderError.value = '';
+
+    try {
+        const response = await axios.patch(`/api/admin/orders/${id}/status`, {
+            status,
+            cancelled_reason: cancelledReason,
+        });
+
+        if (adminOrder.value && adminOrder.value.id === id) {
+            adminOrder.value.status = status;
+        }
+
+        return response.data;
+    } catch (error) {
+        adminOrderError.value = error.response?.data?.errors?.status?.[0] || error.response?.data?.message || 'تغییر وضعیت انجام نشد.';
+        throw error;
+    } finally {
+        adminOrderLoading.value = false;
+    }
+}
+
+export function getAllowedTransitions(currentStatus) {
+    const transitions = {
+        pending: ['confirmed', 'cancelled'],
+        confirmed: ['processing', 'cancelled'],
+        processing: ['shipped'],
+        shipped: ['delivered'],
+        delivered: [],
+        cancelled: [],
+    };
+    return transitions[currentStatus] || [];
+}
+
+export function getStatusLabel(status) {
+    const labels = {
+        pending: 'در انتظار پرداخت',
+        confirmed: 'تأیید شده',
+        processing: 'در حال پردازش',
+        shipped: 'ارسال شده',
+        delivered: 'تحویل شده',
+        cancelled: 'لغو شده',
+    };
+    return labels[status] || status;
+}

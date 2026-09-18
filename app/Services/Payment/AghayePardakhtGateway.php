@@ -11,6 +11,7 @@ class AghayePardakhtGateway implements PaymentGatewayInterface
     private string $createUrl;
     private string $verifyUrl;
     private string $startPayUrl;
+    private ?string $caBundle;
 
     public function __construct()
     {
@@ -18,11 +19,21 @@ class AghayePardakhtGateway implements PaymentGatewayInterface
         $this->createUrl = config('services.aghayepardakht.create_url', 'https://panel.aqayepardakht.ir/api/v2/create');
         $this->verifyUrl = config('services.aghayepardakht.verify_url', 'https://panel.aqayepardakht.ir/api/v2/verify');
         $this->startPayUrl = config('services.aghayepardakht.startpay_url', 'https://panel.aqayepardakht.ir/startpay');
+        $this->caBundle = config('services.aghayepardakht.ca_bundle', '') ?: null;
+    }
+
+    private function withCaOptions(): \Illuminate\Http\Client\PendingRequest
+    {
+        $request = Http::timeout(10);
+        if ($this->caBundle) {
+            $request = $request->withOptions(['verify' => $this->caBundle]);
+        }
+        return $request;
     }
 
     public function initiate(int $amount, string $orderId, string $callbackUrl): PaymentResult
     {
-        $response = Http::timeout(10)->post($this->createUrl, [
+        $response = $this->withCaOptions()->post($this->createUrl, [
             'pin' => $this->pin,
             'amount' => $amount,
             'callback' => $callbackUrl,
@@ -58,7 +69,7 @@ class AghayePardakhtGateway implements PaymentGatewayInterface
 
     public function verify(string $authority, int $amount): PaymentVerificationResult
     {
-        $response = Http::timeout(10)->post($this->verifyUrl, [
+        $response = $this->withCaOptions()->post($this->verifyUrl, [
             'pin' => $this->pin,
             'amount' => $amount,
             'transid' => $authority,
