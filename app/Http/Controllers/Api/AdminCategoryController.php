@@ -87,10 +87,7 @@ class AdminCategoryController extends Controller
     {
         if ($request->isMethod('get')) {
             return response()->json([
-                'data' => $category->attributes()
-                    ->with('values')
-                    ->orderByPivot('sort_order')
-                    ->get(),
+                'data' => $this->buildAttributeStateResponse($category),
             ]);
         }
 
@@ -102,6 +99,7 @@ class AdminCategoryController extends Controller
                 'distinct',
                 'exists:attributes,id',
             ],
+            'attributes.*.is_enabled' => ['required', 'boolean'],
             'attributes.*.is_required' => ['required', 'boolean'],
             'attributes.*.is_filterable' => ['required', 'boolean'],
             'attributes.*.is_variant_axis' => ['required', 'boolean'],
@@ -115,6 +113,7 @@ class AdminCategoryController extends Controller
                 collect($data['attributes'])
                     ->mapWithKeys(fn (array $configuration) => [
                         $configuration['attribute_id'] => [
+                            'is_enabled' => $configuration['is_enabled'],
                             'is_required' => $configuration['is_required'],
                             'is_filterable' => $configuration['is_filterable'],
                             'is_variant_axis' => $configuration['is_variant_axis'],
@@ -168,6 +167,79 @@ class AdminCategoryController extends Controller
                 'A category cannot be its own parent or a descendant of itself.',
             ],
         ]);
+    }
+
+    /**
+     * Build the merged attribute list for the three-state UI.
+     *
+     * Direct attributes (is_enabled=true/false) → state: 'enabled'|'disabled'
+     * Inherited-only attributes (from parent, no override) → state: 'inherit'
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    private function buildAttributeStateResponse(Category $category)
+    {
+        $directAttributes = $category->attributes()
+            ->with('values')
+            ->orderByPivot('sort_order')
+            ->get();
+
+        $directMap = $directAttributes->mapWithKeys(fn ($attr) => [
+            $attr->id => [
+                'id' => $attr->id,
+                'name' => $attr->name,
+                'slug' => $attr->slug,
+                'type' => $attr->type,
+                'sort_order' => $attr->pivot->sort_order,
+                'state' => $attr->pivot->is_enabled ? 'enabled' : 'disabled',
+                'config' => [
+                    'is_enabled' => (bool) $attr->pivot->is_enabled,
+                    'is_required' => (bool) $attr->pivot->is_required,
+                    'is_filterable' => (bool) $attr->pivot->is_filterable,
+                    'is_variant_axis' => (bool) $attr->pivot->is_variant_axis,
+                    'sort_order' => $attr->pivot->sort_order,
+                ],
+                'values' => $attr->values,
+            ],
+        ]);
+
+        if (! $category->parent_id) {
+            return $directMap->values();
+        }
+
+        $parentCategory = Category::query()->find($category->parent_id);
+
+        if (! $parentCategory) {
+            return $directMap->values();
+        }
+
+        $inheritedAttributes = app(\App\Services\EffectiveCategoryAttributesResolver::class)
+            ->for($parentCategory);
+
+        foreach ($inheritedAttributes as $attr) {
+            if ($directMap->has($attr->id)) {
+                continue;
+            }
+
+            $directMap->put($attr->id, [
+                'id' => $attr->id,
+                'name' => $attr->name,
+                'slug' => $attr->slug,
+                'type' => $attr->type,
+                'sort_order' => $attr->pivot->sort_order,
+                'state' => 'inherit',
+                'config' => [
+                    'is_enabled' => true,
+                    'is_required' => (bool) $attr->pivot->is_required,
+                    'is_filterable' => (bool) $attr->pivot->is_filterable,
+                    'is_variant_axis' => (bool) $attr->pivot->is_variant_axis,
+                    'sort_order' => $attr->pivot->sort_order,
+                ],
+                'values' => $attr->values,
+            ]);
+        }
+
+        return $directMap->values();
     }
 
     /**

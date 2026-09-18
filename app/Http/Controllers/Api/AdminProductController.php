@@ -24,6 +24,24 @@ class AdminProductController extends Controller
     ) {
     }
 
+    public function index(Request $request)
+    {
+        $query = Product::query()->with('categories');
+
+        if ($search = $request->input('search')) {
+            $search = trim($search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%");
+            });
+        }
+
+        $paginator = $query->latest()->paginate(20);
+
+        return response()->json($paginator);
+    }
+
     public function meta()
     {
         $allCategories = Category::query()

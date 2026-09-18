@@ -39,7 +39,11 @@ class EffectiveCategoryAttributesResolver
             }
 
             foreach ($pathCategory->attributes as $attribute) {
-                $effectiveAttributes->put($attribute->id, $attribute);
+                if ($attribute->pivot->is_enabled) {
+                    $effectiveAttributes->put($attribute->id, $attribute);
+                } else {
+                    $effectiveAttributes->forget($attribute->id);
+                }
             }
         }
 
@@ -79,7 +83,11 @@ class EffectiveCategoryAttributesResolver
 
             foreach (array_reverse($path) as $categoryId) {
                 foreach ($categoriesById->get($categoryId)?->attributes ?? [] as $attribute) {
-                    $attributes->put($attribute->id, $attribute);
+                    if ($attribute->pivot->is_enabled) {
+                        $attributes->put($attribute->id, $attribute);
+                    } else {
+                        $attributes->forget($attribute->id);
+                    }
                 }
             }
 

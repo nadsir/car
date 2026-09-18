@@ -73,7 +73,7 @@ class CustomerCheckoutController extends Controller
                 }
                 [$whole, $fraction] = array_pad(explode('.', $price, 2), 2, '00');
                 $unitPrice = (int) $whole * 100 + (int) str_pad($fraction, 2, '0');
-                if ($unitPrice > intdiv($maxAmount - $total, $line['quantity'])) {
+                if ($unitPrice * $line['quantity'] > $maxAmount - $total) {
                     throw ValidationException::withMessages(['items' => 'مبلغ سفارش از سقف مجاز بیشتر است.']);
                 }
                 $subtotal = $unitPrice * $line['quantity'];

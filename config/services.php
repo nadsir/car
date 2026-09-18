@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'aghayepardakht' => [
+        'pin' => env('AGHAYE_PARDAKHT_PIN'),
+        'create_url' => env('AGHAYE_PARDAKHT_CREATE_URL', 'https://panel.aqayepardakht.ir/api/v2/create'),
+        'verify_url' => env('AGHAYE_PARDAKHT_VERIFY_URL', 'https://panel.aqayepardakht.ir/api/v2/verify'),
+        'startpay_url' => env('AGHAYE_PARDAKHT_STARTPAY_URL', 'https://panel.aqayepardakht.ir/startpay'),
+    ],
+
 ];

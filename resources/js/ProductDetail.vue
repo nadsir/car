@@ -82,9 +82,23 @@ function prevImage() { mainImageIndex.value = mainImageIndex.value > 0 ? mainIma
 function nextImage() { mainImageIndex.value = mainImageIndex.value < sortedImages.value.length - 1 ? mainImageIndex.value + 1 : 0; }
 
 const attributeAxes = computed(() => {
-    const attrs = product.value?.attributes;
-    if (!attrs || typeof attrs !== 'object') return [];
-    return Object.entries(attrs).map(([slug, values]) => ({ slug, values: Array.isArray(values) ? values : [] }));
+    const variants = product.value?.variants || [];
+    if (!variants.length) return [];
+    const axisMap = new Map();
+    for (const variant of variants) {
+        for (const [slug, values] of Object.entries(variant.attributes || {})) {
+            if (!axisMap.has(slug)) {
+                axisMap.set(slug, { slug, values: [] });
+            }
+            const axis = axisMap.get(slug);
+            for (const val of values) {
+                if (!axis.values.some(v => v.id === val.id)) {
+                    axis.values.push(val);
+                }
+            }
+        }
+    }
+    return Array.from(axisMap.values());
 });
 const hasVariants = computed(() => product.value?.variants?.length > 0);
 

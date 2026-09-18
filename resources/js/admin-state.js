@@ -13,6 +13,11 @@ export const editingProductId = ref(null);
 export const adminUser = ref(null);
 export const isAuthenticated = ref(false);
 
+export const productSearch = ref('');
+export const productPage = ref(1);
+export const productTotalPages = ref(1);
+export const productTotal = ref(0);
+
 const adminTokenStorageKey = 'car.admin_token';
 
 function applyAdminToken(token) {
@@ -94,6 +99,26 @@ export function resetForm() {
     editingProductId.value = null;
 }
 
+export async function loadAdminProducts() {
+    const params = {
+        page: productPage.value,
+    };
+
+    if (productSearch.value) {
+        params.search = productSearch.value;
+    }
+
+    const response = await axios.get('/api/admin/products', { params });
+
+    products.value = response.data.data || [];
+    productTotalPages.value = response.data.last_page || 1;
+    productTotal.value = response.data.total || 0;
+
+    if (productPage.value > productTotalPages.value) {
+        productPage.value = productTotalPages.value;
+    }
+}
+
 export async function loadProducts() {
     const response = await axios.get('/api/products');
 
@@ -124,7 +149,7 @@ export async function load() {
 
     try {
         await Promise.all([
-            loadProducts(),
+            loadAdminProducts(),
             loadMeta(),
             loadAdminCategories(),
         ]);
@@ -249,7 +274,7 @@ export async function save() {
             form.value
         );
 
-        await loadProducts();
+        await loadAdminProducts();
 
         return response.data;
     } finally {
@@ -379,7 +404,7 @@ export async function updateProduct() {
             form.value
         );
 
-        await loadProducts();
+        await loadAdminProducts();
 
         return response.data;
 
@@ -502,7 +527,7 @@ export async function removeProduct(id) {
         `/api/admin/products/${id}`
     );
 
-    await loadProducts();
+    await loadAdminProducts();
 }
 
 /*

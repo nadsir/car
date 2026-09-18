@@ -72,6 +72,12 @@ import {
     loadProductCompatibility,
     attachProductCompatibility,
     detachProductCompatibility,
+    productSearch,
+    productPage,
+    productTotalPages,
+    productTotal,
+    loadAdminProducts,
+    loadMeta,
 } from './admin-state';
 
 
@@ -214,20 +220,26 @@ const currentSection = computed(() => {
 });
 
 const selectedAttributes = computed(() => {
-    const map = new Map();
+    const categoryIds = form.value.category_ids;
 
-    for (const categoryId of form.value.category_ids) {
-        const list =
-            categoryAttributes.value[categoryId] || [];
-
-        for (const attribute of list) {
-            if (!map.has(attribute.id)) {
-                map.set(attribute.id, attribute);
-            }
-        }
+    if (!categoryIds.length) {
+        return [];
     }
 
-    return Array.from(map.values()).sort(
+    const sets = categoryIds.map(categoryId =>
+        categoryAttributes.value[categoryId] || []
+    );
+
+    const first = sets[0];
+    const rest = sets.slice(1);
+
+    const intersected = first.filter(attribute =>
+        rest.every(list =>
+            list.some(item => item.id === attribute.id)
+        )
+    );
+
+    return intersected.sort(
         (a, b) =>
             (a.sort_order ?? 0) -
             (b.sort_order ?? 0)
@@ -242,6 +254,13 @@ const variantAttributes = computed(() => {
     );
 });
 
+const hasIncompleteVariants = computed(() => {
+    if (!variantAttributes.value.length) return false;
+    return form.value.variants.some(
+        v => !v.attribute_value_ids.length
+    );
+});
+
 const stockProducts = computed(() => {
     return products.value.filter(
         product => product.in_stock
@@ -252,6 +271,30 @@ const outOfStockProducts = computed(() => {
     return products.value.length -
         stockProducts.value;
 });
+
+function debounce(fn, ms = 300) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
+    };
+}
+
+const debouncedProductSearch = debounce(() => {
+    productPage.value = 1;
+    loadAdminProducts();
+});
+
+function onProductSearchInput(value) {
+    productSearch.value = value;
+    debouncedProductSearch();
+}
+
+function goToProductPage(page) {
+    if (page < 1 || page > productTotalPages.value) return;
+    productPage.value = page;
+    loadAdminProducts();
+}
 
 const categoryConfigurationOptions = computed(() => {
     const result = [];
@@ -593,7 +636,18 @@ async function deleteCategory(category) {
 }
 
 function isCategoryAttributeConfigured(attributeId) {
-    return categoryAttributeConfigIndex(attributeId) !== -1;
+    const config = categoryAttributeConfiguration(attributeId);
+    return config && config.state === 'enabled';
+}
+
+function isCategoryAttributeInherited(attributeId) {
+    const config = categoryAttributeConfiguration(attributeId);
+    return config && config.state === 'inherit';
+}
+
+function getAttributeState(attributeId) {
+    const config = categoryAttributeConfiguration(attributeId);
+    return config ? config.state : 'inherit';
 }
 
 function categoryAttributeConfiguration(attributeId) {
@@ -602,17 +656,24 @@ function categoryAttributeConfiguration(attributeId) {
     ];
 }
 
-function setCategoryAttributeConfigured(attribute, enabled) {
+function setAttributeState(attribute, newState) {
     const index = categoryAttributeConfigIndex(attribute.id);
 
-    if (!enabled && index !== -1) {
-        categoryAttributeConfig.value.splice(index, 1);
+    if (index !== -1) {
+        if (newState === 'inherit') {
+            categoryAttributeConfig.value.splice(index, 1);
+        } else {
+            categoryAttributeConfig.value[index].state = newState;
+            categoryAttributeConfig.value[index].is_enabled = newState === 'enabled';
+        }
         return;
     }
 
-    if (enabled && index === -1) {
+    if (newState !== 'inherit') {
         categoryAttributeConfig.value.push({
             attribute_id: attribute.id,
+            state: newState,
+            is_enabled: newState === 'enabled',
             is_required: false,
             is_filterable: false,
             is_variant_axis: false,
@@ -651,12 +712,14 @@ async function selectCategoryForAttributes(categoryId) {
             configuredCategoryId.value
         );
 
-        categoryAttributeConfig.value = configurations.map(attribute => ({
-            attribute_id: attribute.id,
-            is_required: Boolean(attribute.pivot?.is_required),
-            is_filterable: Boolean(attribute.pivot?.is_filterable),
-            is_variant_axis: Boolean(attribute.pivot?.is_variant_axis),
-            sort_order: attribute.pivot?.sort_order ?? 0,
+        categoryAttributeConfig.value = configurations.map(item => ({
+            attribute_id: item.id,
+            state: item.state,
+            is_enabled: item.config?.is_enabled ?? true,
+            is_required: item.config?.is_required ?? false,
+            is_filterable: item.config?.is_filterable ?? false,
+            is_variant_axis: item.config?.is_variant_axis ?? false,
+            sort_order: item.config?.sort_order ?? 0,
         }));
     } catch (error) {
         errorMessage.value = 'تنظیمات ویژگی‌های دسته دریافت نشد.';
@@ -675,18 +738,34 @@ async function saveCategoryAttributes() {
     successMessage.value = '';
 
     try {
+        const toSave = categoryAttributeConfig.value
+            .filter(item => item.state !== 'inherit')
+            .map(item => ({
+                attribute_id: item.attribute_id,
+                is_enabled: item.is_enabled,
+                is_required: item.is_required,
+                is_filterable: item.is_filterable,
+                is_variant_axis: item.is_variant_axis,
+                sort_order: item.sort_order,
+            }));
+
         const configurations = await saveCategoryAttributeConfig(
             configuredCategoryId.value,
-            categoryAttributeConfig.value
+            toSave
         );
 
         categoryAttributeConfig.value = configurations.map(attribute => ({
             attribute_id: attribute.id,
+            state: attribute.pivot?.is_enabled ? 'enabled' : 'disabled',
+            is_enabled: attribute.pivot?.is_enabled !== false,
             is_required: Boolean(attribute.pivot?.is_required),
             is_filterable: Boolean(attribute.pivot?.is_filterable),
             is_variant_axis: Boolean(attribute.pivot?.is_variant_axis),
             sort_order: attribute.pivot?.sort_order ?? 0,
         }));
+
+        await loadMeta();
+
         successMessage.value = 'تنظیمات ویژگی‌های دسته ذخیره شد.';
     } catch (error) {
         errorMessage.value = error.response?.data?.message || 'ذخیره تنظیمات انجام نشد.';
@@ -730,6 +809,18 @@ function toggleAttributeValue(valueId) {
             index,
             1
         );
+    }
+}
+
+function handleSelectAttribute(attribute, selectedId) {
+    const ids = form.value.attribute_value_ids;
+    for (let i = ids.length - 1; i >= 0; i--) {
+        if (attribute.values.some(v => v.id === ids[i])) {
+            ids.splice(i, 1);
+        }
+    }
+    if (selectedId) {
+        ids.push(Number(selectedId));
     }
 }
 
@@ -1031,6 +1122,16 @@ function closeProductModal() {
 async function submitProduct() {
     errorMessage.value = '';
     successMessage.value = '';
+
+    const incompleteCount = form.value.variants.filter(
+        v => variantAttributes.value.length && !v.attribute_value_ids.length
+    ).length;
+
+    if (incompleteCount > 0) {
+        errorMessage.value =
+            `${incompleteCount} Variant بدون ویژگی محوری ذخیره نمی‌شود. لطفاً مقدار ویژگی‌ها را انتخاب کنید یا Variant را حذف کنید.`;
+        return;
+    }
 
     try {
         let product;
@@ -1817,6 +1918,23 @@ onMounted(async () => {
                             </button>
                         </div>
 
+                        <div class="products-search-bar">
+                            <input
+                                type="text"
+                                class="search-input"
+                                placeholder="جستجو بر اساس نام، slug یا SKU..."
+                                :value="productSearch"
+                                @input="onProductSearchInput($event.target.value)"
+                            >
+                            <span
+                                v-if="productSearch"
+                                class="search-clear"
+                                @click="productSearch = ''; productPage = 1; loadAdminProducts()"
+                            >
+                                ✕
+                            </span>
+                        </div>
+
                         <div
                             v-if="
                                 products.length
@@ -1901,24 +2019,64 @@ onMounted(async () => {
                                 ◈
                             </div>
 
-                            <h3>
-                                هنوز محصولی ندارید
-                            </h3>
+                            <template v-if="productSearch">
+                                <h3>
+                                    نتیجه‌ای یافت نشد
+                                </h3>
 
-                            <p>
-                                اولین محصول فروشگاه قطعات خودرو
-                                را اضافه کنید.
-                            </p>
+                                <p>
+                                    هیچ محصولی با عبارت «{{ productSearch }}» مطابقت نداشت.
+                                </p>
+                            </template>
 
-                            <button
-                                type="button"
-                                class="primary"
-                                @click="
-                                    openProductModal()
-                                "
-                            >
-                                افزودن اولین محصول
-                            </button>
+                            <template v-else>
+                                <h3>
+                                    هنوز محصولی ندارید
+                                </h3>
+
+                                <p>
+                                    اولین محصول فروشگاه قطعات خودرو
+                                    را اضافه کنید.
+                                </p>
+
+                                <button
+                                    type="button"
+                                    class="primary"
+                                    @click="
+                                        openProductModal()
+                                    "
+                                >
+                                    افزودن اولین محصول
+                                </button>
+                            </template>
+                        </div>
+
+                        <div
+                            v-if="productTotalPages > 1 || productSearch"
+                            class="products-pagination"
+                        >
+                            <span class="pagination-info">
+                                صفحه {{ productPage }} از {{ productTotalPages }} — {{ productTotal }} محصول
+                            </span>
+
+                            <div class="pagination-buttons">
+                                <button
+                                    type="button"
+                                    class="pagination-btn"
+                                    :disabled="productPage <= 1"
+                                    @click="goToProductPage(productPage - 1)"
+                                >
+                                    ◀ قبلی
+                                </button>
+                                <button
+                                    type="button"
+                                    class="pagination-btn"
+                                    :disabled="productPage >= productTotalPages"
+                                    @click="goToProductPage(productPage + 1)"
+                                >
+                                    بعدی ▶
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -2071,10 +2229,10 @@ onMounted(async () => {
 
                         <div class="category-attribute-editor">
                             <div>
-                                <p class="section-label">پیکربندی مستقیم</p>
+                                <p class="section-label">پیکربندی ویژگی‌ها</p>
                                 <h3>ویژگی‌های دسته‌بندی</h3>
                                 <p class="editor-help">
-                                    تنظیمات این بخش فقط روی دسته انتخاب‌شده اعمال می‌شود و می‌تواند تنظیمات والد را Override کند.
+                                    برای هر ویژگی می‌توانید استفاده از تنظیم والد، فعال‌سازی، یا غیرفعال‌سازی را انتخاب کنید.
                                 </p>
                             </div>
 
@@ -2109,19 +2267,32 @@ onMounted(async () => {
                                         v-for="attribute in attributes"
                                         :key="attribute.id"
                                         class="category-attribute-config"
-                                        :class="{ enabled: isCategoryAttributeConfigured(attribute.id) }"
+                                        :class="{
+                                            enabled: isCategoryAttributeConfigured(attribute.id),
+                                            inherited: isCategoryAttributeInherited(attribute.id),
+                                        }"
                                     >
-                                        <label class="config-toggle">
-                                            <input
-                                                type="checkbox"
-                                                :checked="isCategoryAttributeConfigured(attribute.id)"
-                                                @change="setCategoryAttributeConfigured(attribute, $event.target.checked)"
-                                            >
-                                            <span>
+                                        <div class="config-toggle-row">
+                                            <span class="config-label">
                                                 <strong>{{ attribute.name }}</strong>
                                                 <small>{{ attribute.type }}</small>
                                             </span>
-                                        </label>
+
+                                            <select
+                                                class="attribute-state-select"
+                                                :value="getAttributeState(attribute.id)"
+                                                @change="setAttributeState(attribute, $event.target.value)"
+                                            >
+                                                <option
+                                                    v-if="configuredCategory?.parent_id"
+                                                    value="inherit"
+                                                >
+                                                    استفاده از تنظیم والد
+                                                </option>
+                                                <option value="enabled">فعال</option>
+                                                <option value="disabled">غیرفعال</option>
+                                            </select>
+                                        </div>
 
                                         <div
                                             v-if="isCategoryAttributeConfigured(attribute.id)"
@@ -3269,6 +3440,26 @@ onMounted(async () => {
                                     </div>
 
                                     <div
+                                        v-else-if="attribute.values?.length && attribute.type === 'select'"
+                                        class="values-grid"
+                                    >
+                                        <select
+                                            class="attribute-select"
+                                            :value="form.attribute_value_ids.find(id => attribute.values.some(v => v.id === id)) || ''"
+                                            @change="handleSelectAttribute(attribute, $event.target.value)"
+                                        >
+                                            <option value="">— انتخاب نشده —</option>
+                                            <option
+                                                v-for="value in attribute.values"
+                                                :key="value.id"
+                                                :value="value.id"
+                                            >
+                                                {{ value.label }}
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div
                                         v-else-if="attribute.values?.length"
                                         class="values-grid"
                                     >
@@ -3340,6 +3531,8 @@ onMounted(async () => {
                                 <button
                                     type="button"
                                     class="secondary"
+                                    :disabled="!variantAttributes.length"
+                                    :title="!variantAttributes.length ? 'برای افزودن Variant ابتدا یک ویژگی محوری (Variant Axis) برای این دسته‌بندی تعریف کنید.' : ''"
                                     @click="
                                         addVariant()
                                     "
@@ -3416,6 +3609,21 @@ onMounted(async () => {
 
                                         <label class="field">
                                             <span>
+                                                قیمت مقایسه‌ای
+                                            </span>
+
+                                            <input
+                                                v-model.number="
+                                                    variant.compare_at_price
+                                                "
+                                                type="number"
+                                                min="0"
+                                                placeholder="قیمت قبل (اختیاری)"
+                                            />
+                                        </label>
+
+                                        <label class="field">
+                                            <span>
                                                 موجودی
                                             </span>
 
@@ -3426,6 +3634,19 @@ onMounted(async () => {
                                                 type="number"
                                                 min="0"
                                             />
+                                        </label>
+
+                                        <label class="field checkbox-field">
+                                            <input
+                                                type="checkbox"
+                                                v-model="
+                                                    variant.is_active
+                                                "
+                                            />
+
+                                            <span>
+                                                فعال
+                                            </span>
                                         </label>
                                     </div>
 
@@ -3477,6 +3698,14 @@ onMounted(async () => {
                                             </div>
                                         </div>
                                     </div>
+
+                                    <p
+                                        v-if="variantAttributes.length && !variant.attribute_value_ids.length"
+                                        class="hint warning-text"
+                                        style="margin-top: 0.5rem;"
+                                    >
+                                        برای ذخیره Variant باید مقدار هر ویژگی محوری را انتخاب کنید.
+                                    </p>
                                 </div>
                             </div>
 
@@ -3491,13 +3720,18 @@ onMounted(async () => {
                                         Variant ندارد
                                     </strong>
 
-                                    <small>
+                                    <small v-if="variantAttributes.length">
                                         اگر محصول سایز، رنگ یا
                                         ترکیب متفاوت دارد، Variant
                                         اضافه کنید.
                                     </small>
+
+                                    <small v-else>
+                                        برای افزودن Variant ابتدا یک ویژگی محوری (Variant Axis) برای این دسته‌بندی تعریف کنید.
+                                    </small>
                                 </div>
                             </div>
+
                         </div>
 
                         <!-- VEHICLE COMPATIBILITY -->
@@ -4253,6 +4487,79 @@ onMounted(async () => {
     display: grid;
 }
 
+.products-search-bar {
+    position: relative;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f0f0f5;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 36px 10px 14px;
+    border: 1px solid #e0e0ea;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-input:focus {
+    border-color: #6563d9;
+}
+
+.search-clear {
+    position: absolute;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #999aae;
+    font-size: 14px;
+    padding: 4px;
+    line-height: 1;
+}
+
+.search-clear:hover {
+    color: #333;
+}
+
+.products-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-top: 1px solid #f0f0f5;
+    font-size: 13px;
+    color: #666;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.pagination-btn {
+    padding: 6px 14px;
+    border: 1px solid #e0e0ea;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    border-color: #6563d9;
+    color: #6563d9;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .product-row {
     min-width: 0;
     display: flex;
@@ -4682,22 +4989,38 @@ onMounted(async () => {
     background: #fafaff;
 }
 
-.config-toggle {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
+.category-attribute-config.inherited {
+    border-style: dashed;
+    border-color: #d1d5db;
+    background: #fafafa;
 }
 
-.config-toggle strong,
-.config-toggle small {
+.config-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.config-label strong,
+.config-label small {
     display: block;
 }
 
-.config-toggle small {
+.config-label small {
     margin-top: 3px;
     color: #85869c;
     font-size: 11px;
+}
+
+.attribute-state-select {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: white;
+    cursor: pointer;
 }
 
 .config-fields {
@@ -4869,6 +5192,23 @@ onMounted(async () => {
     background: #fff;
     box-shadow:
         0 0 0 3px rgba(101, 99, 217, .08);
+}
+
+.checkbox-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.checkbox-field > span {
+    order: 0;
+}
+
+.checkbox-field input[type="checkbox"] {
+    width: auto;
+    accent-color: #7775df;
 }
 
 /* =========================================================
