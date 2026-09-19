@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerWishlistController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\AdminOrderController;
+use App\Http\Controllers\Api\AdminUserController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -114,6 +115,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         '/products/{product}/images/{image}',
         [AdminProductImageController::class, 'destroy']
     );
+
+    // ── Users ───────────────────────────────────────────────────────
+    Route::get('/users', [AdminUserController::class, 'index']);
+    Route::get('/users/{user}', [AdminUserController::class, 'show'])->whereNumber('user');
+    Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])->whereNumber('user');
 
     // ── Vehicle hierarchy ──────────────────────────────────────────
     Route::get('/vehicles/brands', [AdminVehicleController::class, 'indexBrands']);

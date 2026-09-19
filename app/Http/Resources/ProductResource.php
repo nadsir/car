@@ -113,6 +113,8 @@ class ProductResource extends JsonResource
 
                 'in_stock' => $this->in_stock,
 
+            'has_variants' => $this->variants->isNotEmpty(),
+
             'variants' => $this->variants->map(function ($variant) {
                 return [
                     'id' => $variant->id,

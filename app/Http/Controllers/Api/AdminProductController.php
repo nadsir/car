@@ -158,6 +158,8 @@ class AdminProductController extends Controller
         Request $request,
         Product $product
     ) {
+        \Log::info('[PRODUCT SAVE] update called', ['product_id' => $product->id, 'data' => $request->all()]);
+        
         $data = $this->validateProduct(
             $request,
             $product
@@ -195,6 +197,7 @@ class AdminProductController extends Controller
                 $data['variants']
             );
 
+            \Log::info('[PRODUCT SAVE] updating product', ['product_id' => $product->id, 'data' => $data]);
             $product->update($data);
 
             $this->syncProductCategories(
@@ -217,8 +220,11 @@ class AdminProductController extends Controller
                 $variants
             );
 
+            $product->refresh();
+            \Log::info('[PRODUCT SAVE] product updated successfully', ['product_id' => $product->id, 'name' => $product->name]);
+
             return response()->json(
-                $product->fresh()->load([
+                $product->load([
                     'categories',
                     'attributeValues.attribute',
                     'customAttributeValues.attribute',

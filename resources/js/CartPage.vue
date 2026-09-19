@@ -134,26 +134,26 @@ function remove(key) {
                         <div
                             class="mt-2 flex items-center justify-between"
                         >
-                            <!-- Quantity -->
+<!-- Quantity -->
                             <div
                                 class="flex items-center rounded-lg border border-gray-200"
                             >
                                 <button
                                     type="button"
                                     :disabled="item.quantity <= 1"
-                                    class="px-2.5 py-1 text-sm text-ink hover:bg-gray-100 transition-colors disabled:opacity-30"
+                                    class="px-3 py-2 text-sm text-ink hover:bg-gray-100 transition-colors disabled:opacity-30 min-h-[44px] min-w-[44px] flex items-center justify-center"
                                     @click="dec(item)"
                                 >
                                     −
                                 </button>
                                 <span
-                                    class="min-w-[2rem] text-center text-sm font-mono"
-                                    >{{ item.quantity }}</span
+                                    class="min-w-[3rem] text-center text-sm font-mono"
+                                >{{ item.quantity }}</span
                                 >
                                 <button
                                     type="button"
                                     :disabled="item.quantity >= item.stock"
-                                    class="px-2.5 py-1 text-sm text-ink hover:bg-gray-100 transition-colors disabled:opacity-30"
+                                    class="px-3 py-2 text-sm text-ink hover:bg-gray-100 transition-colors disabled:opacity-30 min-h-[44px] min-w-[44px] flex items-center justify-center"
                                     @click="inc(item)"
                                 >
                                     +
@@ -203,13 +203,13 @@ function remove(key) {
                     <div class="flex gap-3">
                         <a
                             href="/store"
-                            class="flex-1 text-center rounded-lg border border-gray-200 py-2.5 text-xs font-bold text-slate-600 hover:border-gray-400 transition-colors"
+                            class="flex-1 text-center rounded-lg border border-gray-200 py-3 text-xs font-bold text-slate-600 hover:border-gray-400 transition-colors min-h-[44px] flex items-center justify-center"
                         >
                             ادامه خرید
                         </a>
                         <a
                             href="/checkout"
-                            class="flex-1 text-center rounded-lg bg-brand-accent text-dark-900 py-2.5 text-xs font-bold hover:bg-brand-hover"
+                            class="flex-1 text-center rounded-lg bg-brand-accent text-dark-900 py-3 text-xs font-bold hover:bg-brand-hover min-h-[44px] flex items-center justify-center"
                         >
                             تکمیل خرید
                         </a>

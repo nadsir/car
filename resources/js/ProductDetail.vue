@@ -288,8 +288,8 @@ onMounted(fetchProduct);
                             <i class="fa-solid fa-chevron-left text-xs"></i>
                         </button>
                     </div>
-                    <div v-if="sortedImages.length > 1" class="mt-2.5 flex gap-2 overflow-x-auto no-scrollbar">
-                        <button v-for="(img, idx) in sortedImages" :key="img.id" type="button" class="h-14 w-14 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-colors" :class="idx === mainImageIndex ? 'border-brand-accent' : 'border-gray-200 hover:border-gray-400'" @click="selectImage(idx)">
+                    <div v-if="sortedImages.length > 1" class="mt-2.5 flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                        <button v-for="(img, idx) in sortedImages" :key="img.id" type="button" class="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-colors" :class="idx === mainImageIndex ? 'border-brand-accent' : 'border-gray-200 hover:border-gray-400'" @click="selectImage(idx)">
                             <img :src="`/storage/${img.path}`" :alt="img.alt_text || product.name" class="h-full w-full object-cover" @error="onImgError($event)" />
                         </button>
                     </div>
@@ -325,12 +325,12 @@ onMounted(fetchProduct);
                     <p v-if="product.short_description" class="text-xs text-slate-600 leading-relaxed">{{ product.short_description }}</p>
 
                     <!-- Variant Selector -->
-                    <div v-if="hasVariants && attributeAxes.length" class="space-y-3 pt-2">
+                    <div v-if="hasVariants && attributeAxes.length" class="space-y-4 pt-2">
                         <div v-for="axis in attributeAxes" :key="axis.slug">
-                            <p class="mb-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ axis.slug }}</p>
-                            <div class="flex flex-wrap gap-1.5">
-                                <button v-for="val in axis.values" :key="val.id" type="button" :disabled="!isValueSelectable(axis.slug, val.id)" class="rounded-lg border px-3 py-1.5 text-[11px] transition-colors" :class="selectedVariants[axis.slug] === String(val.id) ? 'bg-brand-accent text-dark-900 border-brand-accent font-bold' : 'border-gray-200 text-ink hover:border-slate-600 disabled:opacity-30'" @click="onVariantSelect(axis.slug, val.id)">
-                                    <span v-if="val.hex_color" class="ml-1 inline-block w-3 h-3 rounded-full border border-gray-300" :style="{ backgroundColor: val.hex_color }"></span>
+                            <p class="mb-2 text-[12px] font-bold text-slate-400 uppercase tracking-wider">{{ axis.slug }}</p>
+                            <div class="flex flex-wrap gap-2">
+                                <button v-for="val in axis.values" :key="val.id" type="button" :disabled="!isValueSelectable(axis.slug, val.id)" class="rounded-lg border px-4 py-2 text-sm transition-colors min-h-[44px] flex items-center gap-1.5" :class="selectedVariants[axis.slug] === String(val.id) ? 'bg-brand-accent text-dark-900 border-brand-accent font-bold' : 'border-gray-200 text-ink hover:border-slate-600 disabled:opacity-30'" @click="onVariantSelect(axis.slug, val.id)">
+                                    <span v-if="val.hex_color" class="ml-1 inline-block w-4 h-4 rounded-full border border-gray-300" :style="{ backgroundColor: val.hex_color }"></span>
                                     {{ val.label }}
                                 </button>
                             </div>
@@ -356,18 +356,18 @@ onMounted(fetchProduct);
                     <!-- Add to Cart -->
                     <div class="flex items-center gap-3 pt-3">
                         <div class="flex items-center rounded-lg border border-gray-200">
-                            <button type="button" class="px-3 py-2 text-sm text-ink hover:bg-gray-100 transition-colors" @click="quantity = Math.max(1, quantity - 1)">−</button>
-                            <span class="min-w-[2rem] text-center text-sm font-mono">{{ quantity }}</span>
-                            <button type="button" class="px-3 py-2 text-sm text-ink hover:bg-gray-100 transition-colors" @click="quantity++">+</button>
+                            <button type="button" class="px-4 py-2.5 text-base text-ink hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" @click="quantity = Math.max(1, quantity - 1)">−</button>
+                            <span class="min-w-[3rem] text-center text-base font-mono">{{ quantity }}</span>
+                            <button type="button" class="px-4 py-2.5 text-base text-ink hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" @click="quantity++">+</button>
                         </div>
                         <button
                             type="button"
                             :disabled="!displayInStock || needsVariantSelection"
-                            class="flex-1 rounded-lg bg-brand-accent text-dark-900 py-2.5 text-sm font-bold shadow-glow-yellow transition-colors"
+                            class="flex-1 rounded-lg bg-brand-accent text-dark-900 py-3.5 text-base font-bold shadow-glow-yellow transition-colors min-h-[48px]"
                             :class="!displayInStock || needsVariantSelection ? 'opacity-50 cursor-not-allowed' : 'hover:bg-brand-hover'"
                             @click="addToCartToCart"
                         >
-                            <i class="fa-solid fa-cart-plus ml-1.5 text-xs"></i> افزودن به سبد خرید
+                            <i class="fa-solid fa-cart-plus ml-1.5 text-sm"></i> افزودن به سبد خرید
                         </button>
                     </div>
                 </div>
@@ -406,16 +406,16 @@ onMounted(fetchProduct);
                 <div class="rounded-xl border border-gray-200 bg-white p-4">
                     <ul class="space-y-2">
                         <li v-for="(v, idx) in visibleVehicles" :key="idx" class="rounded-lg border border-gray-200/50 px-3 py-2.5">
-                            <div class="flex items-center gap-1.5 text-xs">
-                                <span class="font-bold text-brand-accent">{{ v.brand.name }}</span>
-                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
-                                <span class="text-ink">{{ v.model.name }}</span>
-                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
-                                <span class="text-slate-500">{{ v.generation.name }} ({{ v.generation.year_start }}<template v-if="v.generation.year_end">-{{ v.generation.year_end }}</template>)</span>
-                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
-                                <span class="text-slate-600">{{ v.trim.name }}</span>
-                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
-                                <span class="text-slate-500">{{ v.engine.name }}</span>
+                            <div class="flex flex-wrap items-center gap-1.5 text-xs sm:text-sm">
+                                <span class="font-bold text-brand-accent shrink-0">{{ v.brand.name }}</span>
+                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400 shrink-0"></i>
+                                <span class="text-ink shrink-0">{{ v.model.name }}</span>
+                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400 shrink-0"></i>
+                                <span class="text-slate-500 shrink-0">{{ v.generation.name }} ({{ v.generation.year_start }}<template v-if="v.generation.year_end">-{{ v.generation.year_end }}</template>)</span>
+                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400 shrink-0"></i>
+                                <span class="text-slate-600 shrink-0">{{ v.trim.name }}</span>
+                                <i class="fa-solid fa-chevron-left text-[8px] text-slate-400 shrink-0"></i>
+                                <span class="text-slate-500 shrink-0">{{ v.engine.name }}</span>
                             </div>
                         </li>
                     </ul>

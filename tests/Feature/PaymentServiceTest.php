@@ -51,7 +51,7 @@ class PaymentServiceTest extends TestCase
         ], $overrides));
     }
 
-    private function registerAttempt(Order $order, string $authority, int $amount = null): PaymentAttempt
+    private function registerAttempt(Order $order, string $authority, ?int $amount = null): PaymentAttempt
     {
         return $order->paymentAttempts()->create([
             'gateway'   => 'FakePaymentGateway',

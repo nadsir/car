@@ -263,13 +263,20 @@ class CustomerAuthTest extends TestCase
 
     public function test_http_provider_uses_configured_relay_without_real_network(): void
     {
-        config(['sms.endpoint' => 'https://sms.example.test/send', 'sms.token' => 'test-only-token']);
+        config([
+            'sms.endpoint' => 'https://sms.example.test/send',
+            'sms.token' => 'test-only-token',
+            'sms.template_id' => '123456',
+        ]);
         Http::preventStrayRequests();
         Http::fake(['sms.example.test/*' => Http::response(['accepted' => true], 200)]);
         (new HttpSmsService())->sendOtp('09121234567', '123456');
         Http::assertSent(fn ($request) => $request->url() === 'https://sms.example.test/send'
-            && $request->hasHeader('Authorization', 'Bearer test-only-token')
-            && $request['mobile'] === '09121234567' && str_contains($request['message'], '123456'));
+            && $request->hasHeader('X-API-KEY', 'test-only-token')
+            && $request['Mobile'] === '09121234567'
+            && $request['TemplateId'] === 123456
+            && isset($request['Parameters'][0]['Name']) && $request['Parameters'][0]['Name'] === 'CODE'
+            && isset($request['Parameters'][0]['Value']) && $request['Parameters'][0]['Value'] === '123456');
     }
 
     public function test_log_provider_cannot_expose_codes_in_production(): void

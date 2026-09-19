@@ -204,6 +204,7 @@ onUnmounted(() => {
                             <i class="fa-solid fa-bolt-lightning text-ink text-sm"></i>
                         </div>
                         <span class="text-lg font-extrabold tracking-tight text-ink hidden sm:block">توربو<span class="text-brand-accent">پارت</span></span>
+                        <span class="text-lg font-extrabold tracking-tight text-ink sm:hidden">توربو<span class="text-brand-accent">پارت</span></span>
                     </a>
                 </div>
 
@@ -322,7 +323,7 @@ onUnmounted(() => {
                     <button type="button" aria-label="بستن" class="p-2 text-slate-500 hover:text-ink" @click="closeMobileSearch">
                         <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
-                    <div class="relative flex-1">
+                    <div class="relative flex-1 min-w-0">
                         <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
                             <i class="fa-solid fa-magnifying-glass text-sm"></i>
                         </div>
@@ -336,7 +337,7 @@ onUnmounted(() => {
                             @keydown.enter="onMobileSearchSubmit"
                         />
                     </div>
-                    <button type="button" class="px-3 py-2 text-xs font-bold text-brand-accent hover:text-brand-hover" @click="onMobileSearchSubmit">
+                    <button type="button" class="px-3 py-2 text-xs font-bold text-brand-accent hover:text-brand-hover shrink-0" @click="onMobileSearchSubmit">
                         جستجو
                     </button>
                 </div>
@@ -375,7 +376,7 @@ onUnmounted(() => {
         <!-- MOBILE DRAWER -->
         <Teleport to="body">
             <div v-if="drawerOpen" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden" @click="onDrawerBackdropClick">
-                <div class="w-[min(82vw,300px)] h-full bg-white border-l border-gray-200 p-4 flex flex-col justify-between" @click.stop>
+                <div class="w-[min(88vw,320px)] max-w-[320px] h-full bg-white border-l border-gray-200 p-4 flex flex-col justify-between" @click.stop>
                     <div>
                         <div class="flex items-center justify-between pb-3 border-b border-gray-200">
                             <span class="font-bold text-ink text-sm">منوی دسترسی</span>

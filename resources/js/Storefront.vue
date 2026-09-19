@@ -537,26 +537,26 @@ onUnmounted(() => {
                     <section v-for="filter in filters" :key="filter.id" class="py-3 border-b border-gray-200/50">
                         <h3 class="mb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ filter.name }}</h3>
                         <div v-if="filter.values.length && filter.type === 'color'" class="flex flex-wrap gap-2">
-                            <button v-for="value in filter.values" :key="value.id" type="button" :title="value.label" class="w-7 h-7 rounded-full border-2 border-gray-200 hover:scale-110 transition-transform" :class="{ 'ring-2 ring-brand-accent': isSelected(filter.slug, value.value) }" :style="{ backgroundColor: value.hex_color || '#333' }" @click="toggleValue(filter, value.value)" />
+                            <button v-for="value in filter.values" :key="value.id" type="button" :title="value.label" class="w-9 h-9 rounded-full border-2 border-gray-200 hover:scale-110 transition-transform min-h-[36px] min-w-[36px]" :class="{ 'ring-2 ring-brand-accent': isSelected(filter.slug, value.value) }" :style="{ backgroundColor: value.hex_color || '#333' }" @click="toggleValue(filter, value.value)" />
                         </div>
-                        <div v-else-if="filter.values.length" class="flex flex-wrap gap-1.5">
-                            <button v-for="value in filter.values" :key="value.id" type="button" class="rounded-lg border px-2.5 py-1 text-[11px] transition-colors" :class="isSelected(filter.slug, value.value) ? 'bg-brand-accent text-ink border-brand-accent font-bold' : 'border-gray-200 text-ink hover:border-slate-600'" @click="toggleValue(filter, value.value)">
+                        <div v-else-if="filter.values.length" class="flex flex-wrap gap-2">
+                            <button v-for="value in filter.values" :key="value.id" type="button" class="rounded-lg border px-3 py-1.5 text-sm transition-colors min-h-[40px] flex items-center" :class="isSelected(filter.slug, value.value) ? 'bg-brand-accent text-ink border-brand-accent font-bold' : 'border-gray-200 text-ink hover:border-slate-600'" @click="toggleValue(filter, value.value)">
                                 {{ value.label }}
                             </button>
                         </div>
-                        <div v-else-if="filter.type === 'boolean'" class="flex gap-1.5">
-                            <button type="button" class="rounded-lg border px-2.5 py-1 text-[11px]" :class="isSelected(filter.slug, 'true') ? 'bg-brand-accent text-ink border-brand-accent font-bold' : 'border-gray-200 text-ink hover:border-slate-600'" @click="toggleValue(filter, 'true')">بله</button>
-                            <button type="button" class="rounded-lg border px-2.5 py-1 text-[11px]" :class="isSelected(filter.slug, 'false') ? 'bg-brand-accent text-ink border-brand-accent font-bold' : 'border-gray-200 text-ink hover:border-slate-600'" @click="toggleValue(filter, 'false')">خیر</button>
+                        <div v-else-if="filter.type === 'boolean'" class="flex gap-2">
+                            <button type="button" class="rounded-lg border px-3 py-1.5 text-sm min-h-[40px]" :class="isSelected(filter.slug, 'true') ? 'bg-brand-accent text-ink border-brand-accent font-bold' : 'border-gray-200 text-ink hover:border-slate-600'" @click="toggleValue(filter, 'true')">بله</button>
+                            <button type="button" class="rounded-lg border px-3 py-1.5 text-sm min-h-[40px]" :class="isSelected(filter.slug, 'false') ? 'bg-brand-accent text-ink border-brand-accent font-bold' : 'border-gray-200 text-ink hover:border-slate-600'" @click="toggleValue(filter, 'false')">خیر</button>
                         </div>
-                        <input v-else-if="filter.type === 'number' || filter.type === 'text'" :type="filter.type === 'number' ? 'number' : 'text'" :value="selectedValues(filter.slug)[0] || ''" class="w-full rounded-lg bg-sand border border-gray-200 px-3 py-1.5 text-[11px] text-ink focus:border-brand-accent/40 focus:outline-none" @change="setScalarValue(filter, $event.target.value)" />
+                        <input v-else-if="filter.type === 'number' || filter.type === 'text'" :type="filter.type === 'number' ? 'number' : 'text'" :value="selectedValues(filter.slug)[0] || ''" class="w-full rounded-lg bg-sand border border-gray-200 px-3 py-2.5 text-sm text-ink focus:border-brand-accent/40 focus:outline-none min-h-[44px]" @change="setScalarValue(filter, $event.target.value)" />
                     </section>
 
                     <!-- Price -->
                     <section class="py-3 border-b border-gray-200/50">
                         <h3 class="mb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">قیمت</h3>
                         <div class="flex gap-2">
-                            <input type="number" placeholder="حداقل" :value="state.priceMin" class="w-1/2 rounded-lg bg-sand border border-gray-200 px-2.5 py-1.5 text-[11px] text-ink focus:border-brand-accent/40 focus:outline-none" @input="onPriceInput('min', $event.target.value)" />
-                            <input type="number" placeholder="حداکثر" :value="state.priceMax" class="w-1/2 rounded-lg bg-sand border border-gray-200 px-2.5 py-1.5 text-[11px] text-ink focus:border-brand-accent/40 focus:outline-none" @input="onPriceInput('max', $event.target.value)" />
+                            <input type="number" placeholder="حداقل" :value="state.priceMin" class="w-1/2 rounded-lg bg-sand border border-gray-200 px-3 py-2.5 text-sm text-ink focus:border-brand-accent/40 focus:outline-none min-h-[44px]" @input="onPriceInput('min', $event.target.value)" />
+                            <input type="number" placeholder="حداکثر" :value="state.priceMax" class="w-1/2 rounded-lg bg-sand border border-gray-200 px-3 py-2.5 text-sm text-ink focus:border-brand-accent/40 focus:outline-none min-h-[44px]" @input="onPriceInput('max', $event.target.value)" />
                         </div>
                     </section>
 
@@ -571,24 +571,24 @@ onUnmounted(() => {
                     <!-- Vehicle -->
                     <section class="py-3">
                         <h3 class="mb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">خودرو</h3>
-                        <div class="flex flex-col gap-1.5">
-                            <select :value="state.vehicleBrandId" class="rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-[11px] text-ink focus:border-brand-accent/40 focus:outline-none" @change="state.vehicleBrandId = $event.target.value; onBrandChange()">
+                        <div class="flex flex-col gap-2">
+                            <select :value="state.vehicleBrandId" class="rounded-lg bg-white border border-gray-200 px-3 py-2.5 text-sm text-ink focus:border-brand-accent/40 focus:outline-none min-h-[44px]" @change="state.vehicleBrandId = $event.target.value; onBrandChange()">
                                 <option value="">انتخاب برند</option>
                                 <option v-for="b in vehicleBrands" :key="b.id" :value="b.id">{{ b.name }}</option>
                             </select>
-                            <select :value="state.vehicleModelId" :disabled="!state.vehicleBrandId" class="rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-[11px] text-ink focus:border-brand-accent/40 focus:outline-none disabled:opacity-40" @change="state.vehicleModelId = $event.target.value; onModelChange()">
+                            <select :value="state.vehicleModelId" :disabled="!state.vehicleBrandId" class="rounded-lg bg-white border border-gray-200 px-3 py-2.5 text-sm text-ink focus:border-brand-accent/40 focus:outline-none disabled:opacity-40 min-h-[44px]" @change="state.vehicleModelId = $event.target.value; onModelChange()">
                                 <option value="">انتخاب مدل</option>
                                 <option v-for="m in vehicleModels" :key="m.id" :value="m.id">{{ m.name }}</option>
                             </select>
-                            <select :value="state.vehicleGenerationId" :disabled="!state.vehicleModelId" class="rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-[11px] text-ink focus:border-brand-accent/40 focus:outline-none disabled:opacity-40" @change="state.vehicleGenerationId = $event.target.value; onGenerationChange()">
+                            <select :value="state.vehicleGenerationId" :disabled="!state.vehicleModelId" class="rounded-lg bg-white border border-gray-200 px-3 py-2.5 text-sm text-ink focus:border-brand-accent/40 focus:outline-none disabled:opacity-40 min-h-[44px]" @change="state.vehicleGenerationId = $event.target.value; onGenerationChange()">
                                 <option value="">انتخاب نسل</option>
                                 <option v-for="g in vehicleGenerations" :key="g.id" :value="g.id">{{ g.name }} ({{ g.year_start }})</option>
                             </select>
-                            <select :value="state.vehicleTrimId" :disabled="!state.vehicleGenerationId" class="rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-[11px] text-ink focus:border-brand-accent/40 focus:outline-none disabled:opacity-40" @change="state.vehicleTrimId = $event.target.value; onTrimChange()">
+                            <select :value="state.vehicleTrimId" :disabled="!state.vehicleGenerationId" class="rounded-lg bg-white border border-gray-200 px-3 py-2.5 text-sm text-ink focus:border-brand-accent/40 focus:outline-none disabled:opacity-40 min-h-[44px]" @change="state.vehicleTrimId = $event.target.value; onTrimChange()">
                                 <option value="">انتخاب تیپ</option>
                                 <option v-for="t in vehicleTrims" :key="t.id" :value="t.id">{{ t.name }}</option>
                             </select>
-                            <select :value="state.vehicleEngineId" :disabled="!state.vehicleTrimId" class="rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-[11px] text-ink focus:border-brand-accent/40 focus:outline-none disabled:opacity-40" @change="state.vehicleEngineId = $event.target.value; onEngineChange()">
+                            <select :value="state.vehicleEngineId" :disabled="!state.vehicleTrimId" class="rounded-lg bg-white border border-gray-200 px-3 py-2.5 text-sm text-ink focus:border-brand-accent/40 focus:outline-none disabled:opacity-40 min-h-[44px]" @change="state.vehicleEngineId = $event.target.value; onEngineChange()">
                                 <option value="">انتخاب موتور</option>
                                 <option v-for="e in vehicleEngines" :key="e.id" :value="e.id">{{ e.name }}</option>
                             </select>
@@ -606,7 +606,7 @@ onUnmounted(() => {
                     <!-- Sort -->
                     <div class="mb-4 flex items-center justify-between">
                         <p class="text-xs text-slate-500">{{ pagination.total }} محصول</p>
-                        <select v-model="state.sort" class="rounded-lg bg-white border border-gray-200 px-2.5 py-1.5 text-[11px] text-ink focus:border-brand-accent/40 focus:outline-none" @change="onSortChange">
+                        <select v-model="state.sort" class="rounded-lg bg-white border border-gray-200 px-3 py-2.5 text-sm text-ink focus:border-brand-accent/40 focus:outline-none min-h-[44px]" @change="onSortChange">
                             <option value="newest">جدیدترین</option>
                             <option value="oldest">قدیمی‌ترین</option>
                             <option value="price_asc">ارزان‌ترین</option>
@@ -681,15 +681,15 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Pagination -->
-                    <div v-if="pagination.lastPage > 1 && !loading" class="mt-6 flex items-center justify-center gap-1">
-                        <button type="button" :disabled="pagination.currentPage <= 1" class="rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] text-slate-600 hover:border-gray-400 disabled:opacity-30 transition-colors" @click="goToPage(pagination.currentPage - 1)">
-                            <i class="fa-solid fa-chevron-left text-[9px]"></i>
+                    <div v-if="pagination.lastPage > 1 && !loading" class="mt-6 flex items-center justify-center gap-1.5">
+                        <button type="button" :disabled="pagination.currentPage <= 1" class="rounded-lg border border-gray-200 px-3 py-2 text-sm text-slate-600 hover:border-gray-400 disabled:opacity-30 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" @click="goToPage(pagination.currentPage - 1)">
+                            <i class="fa-solid fa-chevron-right text-sm"></i>
                         </button>
-                        <button v-for="p in pageNumbers" :key="p" type="button" class="min-w-[2rem] rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors" :class="p === pagination.currentPage ? 'bg-brand-accent text-ink font-bold' : 'border border-gray-200 text-slate-600 hover:border-gray-400'" @click="goToPage(p)">
+                        <button v-for="p in pageNumbers" :key="p" type="button" class="min-w-[2.5rem] rounded-lg px-3 py-2 text-sm font-medium transition-colors min-h-[44px] flex items-center justify-center" :class="p === pagination.currentPage ? 'bg-brand-accent text-ink font-bold' : 'border border-gray-200 text-slate-600 hover:border-gray-400'" @click="goToPage(p)">
                             {{ p }}
                         </button>
-                        <button type="button" :disabled="pagination.currentPage >= pagination.lastPage" class="rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] text-slate-600 hover:border-gray-400 disabled:opacity-30 transition-colors" @click="goToPage(pagination.currentPage + 1)">
-                            <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                        <button type="button" :disabled="pagination.currentPage >= pagination.lastPage" class="rounded-lg border border-gray-200 px-3 py-2 text-sm text-slate-600 hover:border-gray-400 disabled:opacity-30 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center" @click="goToPage(pagination.currentPage + 1)">
+                            <i class="fa-solid fa-chevron-left text-sm"></i>
                         </button>
                     </div>
                 </section>

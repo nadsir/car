@@ -82,19 +82,37 @@ import {
     adminOrder,
     adminOrderLoading,
     adminOrderError,
+    adminOrderSuccess,
     adminOrderSearch,
     adminOrderStatusFilter,
     adminOrderPage,
     adminOrderTotalPages,
     adminOrderTotal,
-    adminOrderSuccess,
     loadAdminOrders,
     loadAdminOrder,
     getStatusLabel,
+    adminNotification,
+    showAdminNotification,
+    hideAdminNotification,
+    adminUsers,
+    adminUserDetail,
+    adminUserLoading,
+    adminUserError,
+    adminUserSuccess,
+    adminUserSearch,
+    adminUserStatusFilter,
+    adminUserPage,
+    adminUserTotalPages,
+    adminUserTotal,
+    loadAdminUsers,
+    loadAdminUser,
+    updateAdminUserStatus,
 } from './admin-state';
 
 import AdminOrdersPage from './AdminOrdersPage.vue';
 import AdminOrderDetailPage from './AdminOrderDetailPage.vue';
+import AdminNotification from './AdminNotification.vue';
+import AdminUsersPage from './AdminUsersPage.vue';
 
 
 async function openEditProduct(id) {
@@ -119,14 +137,12 @@ const section = ref('dashboard');
 
 const showProductModal = ref(false);
 
-const errorMessage = ref('');
-
-const successMessage = ref('');
-
 const loginEmail = ref('');
 const loginPassword = ref('');
 const loginLoading = ref(false);
 const loginError = ref('');
+const errorMessage = ref('');
+const successMessage = ref('');
 const configuredCategoryId = ref(null);
 const categoryAttributeConfig = ref([]);
 const categoryAttributeLoading = ref(false);
@@ -1148,6 +1164,8 @@ async function submitProduct() {
     errorMessage.value = '';
     successMessage.value = '';
 
+    console.log('[PRODUCT SAVE] submitProduct called, editingProductId:', editingProductId.value);
+
     const incompleteCount = form.value.variants.filter(
         v => variantAttributes.value.length && !v.attribute_value_ids.length
     ).length;
@@ -1155,6 +1173,7 @@ async function submitProduct() {
     if (incompleteCount > 0) {
         errorMessage.value =
             `${incompleteCount} Variant بدون ویژگی محوری ذخیره نمی‌شود. لطفاً مقدار ویژگی‌ها را انتخاب کنید یا Variant را حذف کنید.`;
+        console.log('[PRODUCT SAVE] blocked by incomplete variants');
         return;
     }
 
@@ -1162,8 +1181,10 @@ async function submitProduct() {
         let product;
 
         if (editingProductId.value) {
+            console.log('[PRODUCT SAVE] calling updateProduct');
             product = await updateProduct();
         } else {
+            console.log('[PRODUCT SAVE] calling save (create)');
             product = await save();
         }
 
@@ -1190,8 +1211,7 @@ async function submitProduct() {
             imageUploading.value = false;
         }
 
-        successMessage.value =
-            'محصول با موفقیت ذخیره شد.';
+        showAdminNotification('success', 'موفقیت', 'محصول با موفقیت ذخیره شد.');
 
         clearSelectedImages();
 
@@ -1207,9 +1227,9 @@ async function submitProduct() {
             error
         );
 
-        errorMessage.value =
-            error.response?.data?.message ||
-            'ذخیره محصول انجام نشد.';
+        const message = error.message || error.response?.data?.message || 'ذخیره محصول انجام نشد.';
+        showAdminNotification('error', 'خطا', message);
+        errorMessage.value = message;
     }
 }
 
@@ -1557,6 +1577,9 @@ async function changeSection(value) {
     if (value === 'orders') {
         loadAdminOrders();
     }
+    if (value === 'users') {
+        loadAdminUsers();
+    }
 }
 
 function openOrderDetail(orderId) {
@@ -1690,12 +1713,6 @@ onMounted(async () => {
 
         <main class="main">
             <!-- HEADER -->
-  <div
-        v-if="successMessage"
-        class="alert success"
-    >
-        {{ successMessage }}
-    </div>
             <header class="topbar">
                 <div>
                     <p class="eyebrow">
@@ -1722,14 +1739,11 @@ onMounted(async () => {
                 </div>
             </header>
 
-            <!-- GLOBAL ERROR -->
-
-            <div
-                v-if="errorMessage && !showProductModal"
-                class="alert error"
-            >
-                {{ errorMessage }}
-            </div>
+            <!-- Admin Notification -->
+            <AdminNotification
+                :notification="adminNotification"
+                @close="hideAdminNotification"
+            />
 
             <!-- ================================================= -->
             <!-- LOADING -->
@@ -2928,25 +2942,49 @@ onMounted(async () => {
                 <!-- ================================================= -->
 
                 <section
-                    v-else-if="section === 'orders'"
-                >
-                    <AdminOrdersPage @open-detail="openOrderDetail" />
-                </section>
+v-else-if="section === 'orders'"
+            >
+                <AdminOrdersPage @open-detail="openOrderDetail" />
+            </section>
 
-                <!-- ================================================= -->
-                <!-- OTHER -->
-                <!-- ================================================= -->
+            <!-- ================================================= -->
+            <!-- USERS -->
+            <!-- ================================================= -->
 
-                <section
-                    v-else
-                    class="panel"
-                >
-                    <div class="empty">
-                        این بخش در مرحله بعدی
-                        تکمیل می‌شود.
-                    </div>
-                </section>
-            </template>
+            <section
+                v-else-if="section === 'users'"
+            >
+                <AdminUsersPage />
+            </section>
+
+            <!-- ================================================= -->
+            <!-- SETTINGS -->
+            <!-- ================================================= -->
+
+            <section
+                v-else-if="section === 'settings'"
+                class="panel"
+            >
+                <div class="empty">
+                    تنظیمات در مرحله بعدی
+                    تکمیل می‌شود.
+                </div>
+            </section>
+
+            <!-- ================================================= -->
+            <!-- OTHER -->
+            <!-- ================================================= -->
+
+            <section
+                v-else
+                class="panel"
+            >
+                <div class="empty">
+                    این بخش در مرحله بعدی
+                    تکمیل می‌شود.
+                </div>
+            </section>
+        </template>
         </main>
 
         <!-- ================================================= -->
