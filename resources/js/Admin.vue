@@ -782,7 +782,7 @@ async function saveCategoryAttributes() {
         categoryAttributeConfig.value = configurations.map(attribute => ({
             attribute_id: attribute.id,
             state: attribute.pivot?.is_enabled ? 'enabled' : 'disabled',
-            is_enabled: attribute.pivot?.is_enabled !== false,
+            is_enabled: Boolean(attribute.pivot?.is_enabled),
             is_required: Boolean(attribute.pivot?.is_required),
             is_filterable: Boolean(attribute.pivot?.is_filterable),
             is_variant_axis: Boolean(attribute.pivot?.is_variant_axis),

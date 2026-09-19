@@ -298,6 +298,22 @@ export async function loadProduct(id) {
 
         const product = response.data;
 
+        const productCategoryIds = (product.categories || [])
+            .map(category => category.id);
+
+        const categoryAttributeSets = productCategoryIds
+            .map(categoryId => categoryAttributes.value[categoryId] || []);
+
+        const effectiveAttributeIds = categoryAttributeSets.length
+            ? categoryAttributeSets[0]
+                .filter(attribute =>
+                    categoryAttributeSets.slice(1).every(set =>
+                        set.some(item => item.id === attribute.id)
+                    )
+                )
+                .map(attribute => attribute.id)
+            : [];
+
         editingProductId.value = product.id;
 
         form.value = {
@@ -336,6 +352,9 @@ export async function loadProduct(id) {
 
             custom_attribute_values:
                 (product.custom_attribute_values || [])
+                    .filter(value =>
+                        effectiveAttributeIds.includes(value.attribute_id)
+                    )
                     .map(value => ({
                         attribute_id: value.attribute_id,
                         value: value.value_type === 'number'

@@ -56,7 +56,7 @@ class PaymentServiceTest extends TestCase
         return $order->paymentAttempts()->create([
             'gateway'   => 'FakePaymentGateway',
             'authority' => $authority,
-            'amount'    => $amount ?? (int) round((float) $order->total / 10),
+            'amount'    => $amount ?? (int) round((float) $order->total * 10),
             'status'    => PaymentAttempt::STATUS_INITIATED,
         ]);
     }
@@ -79,7 +79,7 @@ class PaymentServiceTest extends TestCase
         $this->assertSame($order->id, $attempt->order_id);
         $this->assertSame('FakePaymentGateway', $attempt->gateway);
         $this->assertSame($result->authority, $attempt->authority);
-        $this->assertSame(20, $attempt->amount);
+        $this->assertSame(2005, $attempt->amount);
         $this->assertSame(PaymentAttempt::STATUS_INITIATED, $attempt->status);
     }
 
@@ -307,8 +307,8 @@ class PaymentServiceTest extends TestCase
             'unit_price' => $product->price, 'subtotal' => '2997.00',
         ]);
 
-        // Order total = 500.00 Rial = 50 Toman
-        // Register attempt with wrong amount (999 instead of 50)
+        // Order total = 500.00 Toman → 5000 Rial
+        // Register attempt with wrong amount (999 instead of 5000)
         $this->registerAttempt($order, 'auth-mismatch', amount: 999);
 
         $this->expectException(\LogicException::class);

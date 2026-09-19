@@ -96,8 +96,6 @@ class PaymentController extends Controller
             return redirect('/orders/' . $order . '?payment=failed&reason=order_not_found');
         }
 
-        $amount = (int) round((float) $orderModel->total);
-
         $result = $this->paymentService->verify($orderModel, $authority);
 
         if ($result->success) {

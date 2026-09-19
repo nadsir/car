@@ -28,7 +28,7 @@ class PaymentService
             );
         }
 
-        $amount = (int) round((float) $order->total / 10);
+        $amount = (int) round((float) $order->total * 10);
 
         $attempt = $order->paymentAttempts()->create([
             'gateway' => class_basename($this->gateway),
@@ -83,7 +83,7 @@ class PaymentService
             );
         }
 
-        $orderTotal = (int) round((float) $order->total / 10);
+        $orderTotal = (int) round((float) $order->total * 10);
         if ($attempt->amount !== $orderTotal) {
             throw new \LogicException(
                 "Attempt amount [{$attempt->amount}] does not match order total [{$orderTotal}]."
