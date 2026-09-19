@@ -56,7 +56,7 @@ class PaymentServiceTest extends TestCase
         return $order->paymentAttempts()->create([
             'gateway'   => 'FakePaymentGateway',
             'authority' => $authority,
-            'amount'    => $amount ?? (int) round((float) $order->total * 10),
+            'amount'    => $amount ?? (int) round((float) $order->total),
             'status'    => PaymentAttempt::STATUS_INITIATED,
         ]);
     }
@@ -79,7 +79,7 @@ class PaymentServiceTest extends TestCase
         $this->assertSame($order->id, $attempt->order_id);
         $this->assertSame('FakePaymentGateway', $attempt->gateway);
         $this->assertSame($result->authority, $attempt->authority);
-        $this->assertSame(2005, $attempt->amount);
+        $this->assertSame(201, $attempt->amount);
         $this->assertSame(PaymentAttempt::STATUS_INITIATED, $attempt->status);
     }
 
