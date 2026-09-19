@@ -698,6 +698,7 @@ export const adminOrderSuccess = ref('');
 
 export const adminOrderSearch = ref('');
 export const adminOrderStatusFilter = ref('');
+export const adminOrderPaymentFilter = ref('');
 export const adminOrderPage = ref(1);
 export const adminOrderTotalPages = ref(1);
 export const adminOrderTotal = ref(0);
@@ -720,6 +721,10 @@ export async function loadAdminOrders() {
             params.status = adminOrderStatusFilter.value;
         }
 
+        if (adminOrderPaymentFilter.value) {
+            params.payment_status = adminOrderPaymentFilter.value;
+        }
+
         const response = await axios.get('/api/admin/orders', { params });
 
         adminOrders.value = response.data.data || [];
@@ -739,7 +744,6 @@ export async function loadAdminOrders() {
 export async function loadAdminOrder(id) {
     adminOrderLoading.value = true;
     adminOrderError.value = '';
-    adminOrderSuccess.value = '';
     adminOrder.value = null;
 
     try {
