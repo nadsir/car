@@ -3,6 +3,7 @@ import {
     adminOrder,
     adminOrderLoading,
     adminOrderError,
+    adminOrderSuccess,
     loadAdminOrder,
     updateAdminOrderStatus,
     getAllowedTransitions,
@@ -15,11 +16,14 @@ const props = defineProps({
     orderId: { type: [String, Number], required: true },
 });
 
-const showStatusModal = ref(false);
-const newStatus = ref('');
+const emit = defineEmits(['back']);
+
+const showCancelModal = ref(false);
+const showConfirmModal = ref(false);
 const cancelledReason = ref('');
+const processingAction = ref('');
 const statusLoading = ref(false);
-const statusError = ref('');
+const pendingConfirmAction = ref(null);
 
 const formatPrice = (value) => {
     if (value === null || value === undefined || value === '') return '۰';
@@ -37,6 +41,16 @@ const formatDate = (dateString) => {
     });
 };
 
+const formatShortDate = (dateString) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('fa-IR', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
 const allowedTransitions = computed(() => {
     if (!adminOrder.value) return [];
     return getAllowedTransitions(adminOrder.value.status);
@@ -44,40 +58,95 @@ const allowedTransitions = computed(() => {
 
 const canChangeStatus = computed(() => allowedTransitions.value.length > 0);
 
+const actionLabels = {
+    confirmed: 'تأیید سفارش',
+    processing: 'شروع پردازش',
+    shipped: 'ثبت ارسال',
+    delivered: 'تحویل شد',
+    cancelled: 'لغو سفارش',
+};
+
+const actionConfirmMessages = {
+    confirmed: 'آیا از تأیید این سفارش مطمئن هستید؟',
+    processing: 'آیا از شروع پردازش این سفارش مطمئن هستید؟',
+    shipped: 'آیا از ثبت ارسال این سفارش مطمئن هستید؟',
+    delivered: 'آیا از تحویل این سفارش مطمئن هستید؟',
+    cancelled: 'آیا از لغو این سفارش مطمئن هستید؟ این عمل قابل بازگشت نیست.',
+};
+
+const statusFlow = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
+
+const statusProgress = computed(() => {
+    if (!adminOrder.value) return 0;
+    const idx = statusFlow.indexOf(adminOrder.value.status);
+    if (idx === -1) return 0;
+    return ((idx + 1) / statusFlow.length) * 100;
+});
+
+function getStatusClass(status) {
+    const map = {
+        pending: 'status-pending',
+        confirmed: 'status-confirmed',
+        processing: 'status-processing',
+        shipped: 'status-shipped',
+        delivered: 'status-delivered',
+        cancelled: 'status-cancelled',
+    };
+    return map[status] || '';
+}
+
 watch(() => props.orderId, (newId) => {
     if (newId) {
         loadAdminOrder(newId);
     }
 }, { immediate: true });
 
-async function openStatusModal() {
-    if (!canChangeStatus.value) return;
-    newStatus.value = '';
-    cancelledReason.value = '';
-    statusError.value = '';
-    showStatusModal.value = true;
+function handleAction(status) {
+    if (status === 'cancelled') {
+        cancelledReason.value = '';
+        showCancelModal.value = true;
+        return;
+    }
+
+    pendingConfirmAction.value = status;
+    showConfirmModal.value = true;
 }
 
-async function closeStatusModal() {
-    showStatusModal.value = false;
-    newStatus.value = '';
-    cancelledReason.value = '';
-    statusError.value = '';
+async function confirmAction() {
+    const status = pendingConfirmAction.value;
+    if (!status) return;
+    pendingConfirmAction.value = null;
+    showConfirmModal.value = false;
+    await executeStatusChange(status, null);
 }
 
-async function confirmStatusChange() {
-    if (!newStatus.value || statusLoading.value) return;
+function closeConfirmModal() {
+    showConfirmModal.value = false;
+    pendingConfirmAction.value = null;
+}
+
+async function confirmCancel() {
+    await executeStatusChange('cancelled', cancelledReason.value || null);
+    showCancelModal.value = false;
+}
+
+function closeCancelModal() {
+    showCancelModal.value = false;
+    cancelledReason.value = '';
+}
+
+async function executeStatusChange(status, reason) {
     statusLoading.value = true;
-    statusError.value = '';
+    processingAction.value = status;
 
     try {
-        await updateAdminOrderStatus(props.orderId, newStatus.value, newStatus.value === 'cancelled' ? cancelledReason.value : null);
+        await updateAdminOrderStatus(props.orderId, status, reason);
         await loadAdminOrder(props.orderId);
-        showStatusModal.value = false;
     } catch (error) {
-        // Error handled in updateAdminOrderStatus
+        // Error handled in admin-state
     } finally {
         statusLoading.value = false;
+        processingAction.value = '';
     }
 }
 
@@ -90,193 +159,343 @@ function onImgError(event) {
 <template>
     <section class="order-detail-section">
         <div class="panel">
+            <!-- Header -->
             <div class="panel-head">
                 <div>
-                    <p class="section-label">مدیریت فروشگاه / سفارش‌ها</p>
-                    <h2 v-if="adminOrder">سفارش <span dir="ltr">#{{ adminOrder.id }}</span></h2>
-                    <h2 v-else>سفارش <span dir="ltr">#{{ orderId }}</span></h2>
+                    <p class="section-label">
+                        <span class="breadcrumb-link" @click="$emit('back')">سفارش‌ها</span>
+                        / جزئیات سفارش
+                    </p>
+                    <h2 v-if="adminOrder">
+                        سفارش <span class="order-id-large" dir="ltr">#{{ adminOrder.id }}</span>
+                    </h2>
+                    <h2 v-else>
+                        سفارش <span dir="ltr">#{{ orderId }}</span>
+                    </h2>
                 </div>
                 <div class="panel-head-actions">
-                    <button type="button" class="text-button" @click="$emit('back')">
+                    <button type="button" class="btn-back" @click="$emit('back')">
                         ← بازگشت به لیست
                     </button>
                 </div>
             </div>
 
-            <div v-if="adminOrderLoading" class="loading">
+            <!-- Loading -->
+            <div v-if="adminOrderLoading && !adminOrder" class="loading-state">
                 <div class="spinner"></div>
                 <span>در حال بارگذاری سفارش...</span>
             </div>
 
-            <div v-else-if="adminOrderError" class="alert error">
+            <!-- Error -->
+            <div v-else-if="adminOrderError && !adminOrder" class="alert error">
                 {{ adminOrderError }}
                 <button type="button" class="btn-retry" @click="loadAdminOrder(orderId)">تلاش دوباره</button>
             </div>
 
             <template v-else-if="adminOrder">
-                <!-- Status Bar -->
-                <div class="order-status-bar mb-6">
-                    <div class="status-info">
-                        <span class="status-label">وضعیت:</span>
-                        <span class="status" :class="adminOrder.status === 'cancelled' ? 'bad' : adminOrder.status === 'delivered' ? 'ok' : ''">
-                            {{ getStatusLabel(adminOrder.status) }}
-                        </span>
+                <!-- Success Toast -->
+                <div v-if="adminOrderSuccess" class="alert success order-success-toast">
+                    {{ adminOrderSuccess }}
+                </div>
+
+                <!-- Error Toast (during status change) -->
+                <div v-if="adminOrderError" class="alert error order-success-toast">
+                    {{ adminOrderError }}
+                </div>
+
+                <!-- Order Header Bar -->
+                <div class="order-header-bar">
+                    <div class="order-header-info">
+                        <div class="order-header-meta">
+                            <span class="status-badge status-lg" :class="getStatusClass(adminOrder.status)">
+                                {{ getStatusLabel(adminOrder.status) }}
+                            </span>
+                            <span class="payment-badge payment-lg" :class="adminOrder.paid_at ? 'paid' : 'unpaid'">
+                                {{ adminOrder.paid_at ? 'پرداخت شده' : 'پرداخت نشده' }}
+                            </span>
+                        </div>
+                        <div class="order-header-details">
+                            <span class="header-detail">
+                                <span class="detail-label">تاریخ ثبت:</span>
+                                {{ formatDate(adminOrder.created_at) }}
+                            </span>
+                            <span class="header-detail">
+                                <span class="detail-label">مبلغ:</span>
+                                <strong>{{ formatPrice(adminOrder.total) }} تومان</strong>
+                            </span>
+                        </div>
                     </div>
-                    <div class="status-actions">
-                        <button
-                            v-if="canChangeStatus"
-                            type="button"
-                            class="primary"
-                            @click="openStatusModal"
+                </div>
+
+                <!-- Status Progress -->
+                <div v-if="adminOrder.status !== 'cancelled'" class="status-progress-section">
+                    <div class="status-progress-bar">
+                        <div class="status-progress-fill" :style="{ width: statusProgress + '%' }"></div>
+                    </div>
+                    <div class="status-steps">
+                        <div
+                            v-for="(step, index) in statusFlow"
+                            :key="step"
+                            class="status-step"
+                            :class="{
+                                active: statusFlow.indexOf(adminOrder.status) >= index,
+                                current: adminOrder.status === step
+                            }"
                         >
-                            تغییر وضعیت
+                            <span class="step-dot"></span>
+                            <span class="step-label">{{ getStatusLabel(step) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cancelled Info -->
+                <div v-if="adminOrder.status === 'cancelled'" class="cancelled-info-bar">
+                    <div class="cancelled-icon">✕</div>
+                    <div class="cancelled-details">
+                        <strong>این سفارش لغو شده</strong>
+                        <span v-if="adminOrder.cancelled_at">{{ formatDate(adminOrder.cancelled_at) }}</span>
+                    </div>
+                    <div v-if="adminOrder.cancelled_reason" class="cancelled-reason">
+                        {{ adminOrder.cancelled_reason }}
+                    </div>
+                </div>
+
+                <!-- Order Actions -->
+                <div v-if="canChangeStatus" class="order-actions-section">
+                    <h3 class="section-title">اقدامات سفارش</h3>
+                    <div class="action-buttons">
+                        <button
+                            v-for="status in allowedTransitions"
+                            :key="status"
+                            type="button"
+                            class="action-btn"
+                            :class="status === 'cancelled' ? 'action-btn-danger' : 'action-btn-primary'"
+                            :disabled="statusLoading"
+                            @click="handleAction(status)"
+                        >
+                            <span v-if="statusLoading && processingAction === status" class="btn-spinner"></span>
+                            {{ actionLabels[status] || getStatusLabel(status) }}
                         </button>
                     </div>
                 </div>
 
-                <!-- Order Info -->
-                <div class="order-grid">
-                    <div class="panel order-info-panel">
-                        <h3 class="panel-title">اطلاعات سفارش</h3>
-                        <dl class="info-list">
-                            <div><dt>شماره سفارش</dt><dd dir="ltr" class="font-mono">#{{ adminOrder.id }}</dd></div>
-                            <div><dt>تاریخ ثبت</dt><dd>{{ formatDate(adminOrder.created_at) }}</dd></div>
-                            <div><dt>وضعیت</dt><dd><span class="status" :class="adminOrder.status === 'cancelled' ? 'bad' : adminOrder.status === 'delivered' ? 'ok' : ''">{{ getStatusLabel(adminOrder.status) }}</span></dd></div>
-                            <div v-if="adminOrder.cancelled_at"><dt>تاریخ لغو</dt><dd>{{ formatDate(adminOrder.cancelled_at) }}</dd></div>
-                            <div v-if="adminOrder.cancelled_reason"><dt>دلیل لغو</dt><dd class="whitespace-pre-line">{{ adminOrder.cancelled_reason }}</dd></div>
-                        </dl>
+                <!-- Main Content Grid -->
+                <div class="order-detail-grid">
+                    <!-- Customer Info -->
+                    <div class="detail-card">
+                        <h3 class="card-title">اطلاعات مشتری</h3>
+                        <div class="card-body">
+                            <div class="info-row" v-if="adminOrder.user">
+                                <span class="info-label">کاربر سایت</span>
+                                <span class="info-value">{{ adminOrder.user.name }} ({{ adminOrder.user.email }})</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">نام گیرنده</span>
+                                <span class="info-value">{{ adminOrder.customer_name }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">تلفن</span>
+                                <span class="info-value" dir="ltr">{{ adminOrder.customer_phone }}</span>
+                            </div>
+                            <div class="info-row" v-if="adminOrder.customer_email">
+                                <span class="info-label">ایمیل</span>
+                                <span class="info-value">{{ adminOrder.customer_email }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">استان و شهر</span>
+                                <span class="info-value">{{ adminOrder.shipping_province }}، {{ adminOrder.shipping_city }}</span>
+                            </div>
+                            <div class="info-row info-row-full">
+                                <span class="info-label">آدرس</span>
+                                <span class="info-value whitespace-pre-line">{{ adminOrder.shipping_address }}</span>
+                            </div>
+                            <div class="info-row" v-if="adminOrder.shipping_postal_code">
+                                <span class="info-label">کد پستی</span>
+                                <span class="info-value" dir="ltr">{{ adminOrder.shipping_postal_code }}</span>
+                            </div>
+                            <div class="info-row info-row-full" v-if="adminOrder.notes">
+                                <span class="info-label">توضیحات مشتری</span>
+                                <span class="info-value whitespace-pre-line">{{ adminOrder.notes }}</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="panel payment-info-panel">
-                        <h3 class="panel-title">اطلاعات پرداخت</h3>
-                        <dl class="info-list">
-                            <div><dt>مبلغ نهایی</dt><dd><strong>{{ formatPrice(adminOrder.total) }} تومان</strong></dd></div>
-                            <div><dt>جمع کالاها</dt><dd>{{ formatPrice(adminOrder.subtotal) }} تومان</dd></div>
-                            <div><dt>تخفیف</dt><dd>{{ formatPrice(adminOrder.discount) }} تومان</dd></div>
-                            <div><dt>هزینه ارسال</dt><dd>{{ formatPrice(adminOrder.shipping_cost) }} تومان</dd></div>
-                            <div><dt>وضعیت پرداخت</dt><dd>{{ adminOrder.paid_at ? 'پرداخت شده' : 'پرداخت نشده' }}</dd></div>
-                            <div v-if="adminOrder.paid_at"><dt>تاریخ پرداخت</dt><dd>{{ formatDate(adminOrder.paid_at) }}</dd></div>
-                            <div v-if="adminOrder.payment_method"><dt>روش پرداخت</dt><dd>{{ adminOrder.payment_method }}</dd></div>
-                            <div v-if="adminOrder.payment_ref"><dt>شماره مرجع</dt><dd dir="ltr" class="font-mono">{{ adminOrder.payment_ref }}</dd></div>
-                        </dl>
+                    <!-- Payment Info -->
+                    <div class="detail-card">
+                        <h3 class="card-title">اطلاعات پرداخت</h3>
+                        <div class="card-body">
+                            <div class="info-row">
+                                <span class="info-label">مبلغ نهایی</span>
+                                <span class="info-value info-value-lg"><strong>{{ formatPrice(adminOrder.total) }} تومان</strong></span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">جمع کالاها</span>
+                                <span class="info-value">{{ formatPrice(adminOrder.subtotal) }} تومان</span>
+                            </div>
+                            <div class="info-row" v-if="adminOrder.discount > 0">
+                                <span class="info-label">تخفیف</span>
+                                <span class="info-value discount-value">{{ formatPrice(adminOrder.discount) }} تومان</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">هزینه ارسال</span>
+                                <span class="info-value">{{ formatPrice(adminOrder.shipping_cost) }} تومان</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">وضعیت پرداخت</span>
+                                <span class="payment-badge" :class="adminOrder.paid_at ? 'paid' : 'unpaid'">
+                                    {{ adminOrder.paid_at ? 'پرداخت شده' : 'پرداخت نشده' }}
+                                </span>
+                            </div>
+                            <div class="info-row" v-if="adminOrder.paid_at">
+                                <span class="info-label">تاریخ پرداخت</span>
+                                <span class="info-value">{{ formatDate(adminOrder.paid_at) }}</span>
+                            </div>
+                            <div class="info-row" v-if="adminOrder.payment_method">
+                                <span class="info-label">روش پرداخت</span>
+                                <span class="info-value">{{ adminOrder.payment_method }}</span>
+                            </div>
+                            <div class="info-row" v-if="adminOrder.payment_ref">
+                                <span class="info-label">شماره مرجع</span>
+                                <span class="info-value font-mono" dir="ltr">{{ adminOrder.payment_ref }}</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-
-                <!-- Customer Info -->
-                <div class="panel customer-info-panel">
-                    <h3 class="panel-title">اطلاعات مشتری</h3>
-                    <dl class="info-grid">
-                        <div v-if="adminOrder.user"><dt>کاربر</dt><dd>{{ adminOrder.user.name }} ({{ adminOrder.user.email }})</dd></div>
-                        <div><dt>نام گیرنده</dt><dd>{{ adminOrder.customer_name }}</dd></div>
-                        <div><dt>تلفن</dt><dd dir="ltr">{{ adminOrder.customer_phone }}</dd></div>
-                        <div><dt>ایمیل</dt><dd>{{ adminOrder.customer_email }}</dd></div>
-                        <div><dt>استان و شهر</dt><dd>{{ adminOrder.shipping_province }}، {{ adminOrder.shipping_city }}</dd></div>
-                        <div class="col-span-2"><dt>آدرس</dt><dd class="whitespace-pre-line">{{ adminOrder.shipping_address }}</dd></div>
-                        <div><dt>کد پستی</dt><dd>{{ adminOrder.shipping_postal_code }}</dd></div>
-                        <div v-if="adminOrder.notes" class="col-span-2"><dt>توضیحات</dt><dd class="whitespace-pre-line">{{ adminOrder.notes }}</dd></div>
-                    </dl>
                 </div>
 
                 <!-- Order Items -->
-                <div class="panel order-items-panel">
-                    <h3 class="panel-title">اقلام سفارش</h3>
-                    <table class="items-table">
-                        <thead>
-                            <tr>
-                                <th>محصول</th>
-                                <th>SKU</th>
-                                <th>تعداد</th>
-                                <th>قیمت واحد</th>
-                                <th>مجموع</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="item in adminOrder.items" :key="item.id">
-                                <td>
-                                    <div class="item-cell">
-                                        <img v-if="item.image" :src="`/storage/${item.image}`" :alt="item.product_name" class="item-thumb" @error="onImgError" />
-                                        <div class="item-info">
-                                            <span class="item-name">{{ item.product_name }}</span>
-                                            <span v-if="item.attributes?.length" class="item-attrs">
-                                                {{ item.attributes.map(a => a.label || a.value).join('، ') }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td v-if="item.sku">{{ item.sku }}</td>
-                                <td>{{ item.quantity }}</td>
-                                <td>{{ formatPrice(item.unit_price) }} تومان</td>
-                                <td><strong>{{ formatPrice(item.subtotal) }} تومان</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="detail-card detail-card-full">
+                    <h3 class="card-title">اقلام سفارش</h3>
+                    <div class="card-body">
+                        <div class="items-list">
+                            <div v-for="item in adminOrder.items" :key="item.id" class="item-row">
+                                <div class="item-image">
+                                    <img
+                                        v-if="item.image"
+                                        :src="`/storage/${item.image}`"
+                                        :alt="item.product_name"
+                                        class="item-thumb"
+                                        @error="onImgError"
+                                    />
+                                    <div v-else class="item-thumb-placeholder">📦</div>
+                                </div>
+                                <div class="item-details">
+                                    <span class="item-name">{{ item.product_name }}</span>
+                                    <span v-if="item.sku" class="item-sku" dir="ltr">SKU: {{ item.sku }}</span>
+                                    <span v-if="item.attributes?.length" class="item-attrs">
+                                        {{ item.attributes.map(a => a.label || a.value).join('، ') }}
+                                    </span>
+                                </div>
+                                <div class="item-pricing">
+                                    <span class="item-qty">{{ item.quantity }} × {{ formatPrice(item.unit_price) }}</span>
+                                    <span class="item-subtotal">{{ formatPrice(item.subtotal) }} تومان</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Payment Attempts -->
-                <div v-if="adminOrder.payment_attempts?.length" class="panel payment-attempts-panel">
-                    <h3 class="panel-title">تلاش‌های پرداخت</h3>
-                    <table class="attempts-table">
-                        <thead>
-                            <tr>
-                                <th>درگاه</th>
-                                <th>مبلغ (تومان)</th>
-                                <th>وضعیت</th>
-                                <th>Authority</th>
-                                <th>Reference</th>
-                                <th>تاریخ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="attempt in adminOrder.payment_attempts" :key="attempt.id">
-                                <td>{{ attempt.gateway }}</td>
-                                <td dir="ltr">{{ formatPrice(attempt.amount / 10) }}</td>
-                                <td>
-                                    <span class="status" :class="attempt.status === 'verified' ? 'ok' : attempt.status === 'failed' ? 'bad' : ''">
+                <div v-if="adminOrder.payment_attempts?.length" class="detail-card detail-card-full">
+                    <h3 class="card-title">تلاش‌های پرداخت</h3>
+                    <div class="card-body">
+                        <div class="attempts-list">
+                            <div v-for="attempt in adminOrder.payment_attempts" :key="attempt.id" class="attempt-row">
+                                <div class="attempt-main">
+                                    <span class="attempt-gateway">{{ attempt.gateway }}</span>
+                                    <span class="attempt-amount" dir="ltr">{{ formatPrice(attempt.amount / 10) }} تومان</span>
+                                    <span class="status-badge status-sm" :class="attempt.status === 'verified' ? 'status-delivered' : attempt.status === 'failed' ? 'status-cancelled' : ''">
                                         {{ attempt.status }}
                                     </span>
-                                </td>
-                                <td dir="ltr" class="font-mono" v-if="attempt.authority">{{ attempt.authority }}</td>
-                                <td dir="ltr" class="font-mono" v-if="attempt.reference">{{ attempt.reference }}</td>
-                                <td>{{ formatDate(attempt.verified_at || attempt.created_at) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                </div>
+                                <div class="attempt-meta">
+                                    <span v-if="attempt.authority" class="attempt-code" dir="ltr">Authority: {{ attempt.authority }}</span>
+                                    <span v-if="attempt.reference" class="attempt-code" dir="ltr">Ref: {{ attempt.reference }}</span>
+                                    <span class="attempt-date">{{ formatShortDate(attempt.verified_at || attempt.created_at) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty Payment Attempts -->
+                <div v-else class="detail-card detail-card-full">
+                    <h3 class="card-title">تلاش‌های پرداخت</h3>
+                    <div class="card-body">
+                        <div class="empty-inline">
+                            <span class="empty-inline-icon">💳</span>
+                            <span>تلاش پرداختی ثبت نشده است</span>
+                        </div>
+                    </div>
                 </div>
             </template>
         </div>
 
-        <!-- Status Change Modal -->
-        <div v-if="showStatusModal" class="modal-overlay" @click.self="closeStatusModal">
+        <!-- Cancel Modal -->
+        <div v-if="showCancelModal" class="modal-overlay" @click.self="closeCancelModal">
             <div class="modal">
                 <div class="modal-head">
-                    <h3>تغییر وضعیت سفارش</h3>
-                    <button type="button" class="modal-close" @click="closeStatusModal">✕</button>
+                    <h3>لغو سفارش</h3>
+                    <button type="button" class="modal-close" @click="closeCancelModal">✕</button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-4">وضعیت فعلی: <strong>{{ getStatusLabel(adminOrder?.status) }}</strong></p>
-
-                    <div class="form-field mb-4">
-                        <label>وضعیت جدید</label>
-                        <select v-model="newStatus" class="form-select" required>
-                            <option value="">انتخاب کنید</option>
-                            <option v-for="status in allowedTransitions" :key="status" :value="status">
-                                {{ getStatusLabel(status) }}
-                            </option>
-                        </select>
-                        <p class="form-hint" v-if="allowedTransitions.length === 1">تنها وضعیت مجاز برای انتقال.</p>
+                    <div class="cancel-warning">
+                        <span class="cancel-warning-icon">⚠</span>
+                        <span>آیا از لغو سفارش <strong dir="ltr">#{{ adminOrder?.id }}</strong> مطمئن هستید؟</span>
                     </div>
 
-                    <div v-if="newStatus === 'cancelled'" class="form-field mb-4">
+                    <div class="form-field">
                         <label>دلیل لغو (اختیاری)</label>
-                        <textarea v-model="cancelledReason" rows="3" class="form-textarea" placeholder="دلیل لغو سفارش را وارد کنید..."></textarea>
+                        <textarea
+                            v-model="cancelledReason"
+                            rows="3"
+                            class="form-textarea"
+                            placeholder="دلیل لغو سفارش را وارد کنید..."
+                        ></textarea>
                     </div>
-
-                    <div v-if="statusError" class="alert error mb-4">{{ statusError }}</div>
 
                     <div class="modal-actions">
-                        <button type="button" class="text-button" @click="closeStatusModal" :disabled="statusLoading">انصراف</button>
-                        <button type="button" class="primary" @click="confirmStatusChange" :disabled="statusLoading || !newStatus">
-                            {{ statusLoading ? 'در حال ثبت...' : 'تأیید و تغییر' }}
+                        <button type="button" class="btn-cancel-modal" @click="closeCancelModal" :disabled="statusLoading">
+                            بازگشت
+                        </button>
+                        <button
+                            type="button"
+                            class="btn-confirm-cancel"
+                            @click="confirmCancel"
+                            :disabled="statusLoading"
+                        >
+                            <span v-if="statusLoading" class="btn-spinner"></span>
+                            {{ statusLoading ? 'در حال لغو...' : 'تأیید لغو سفارش' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Action Modal -->
+        <div v-if="showConfirmModal" class="modal-overlay" @click.self="closeConfirmModal">
+            <div class="modal">
+                <div class="modal-head">
+                    <h3>تأیید عملیات</h3>
+                    <button type="button" class="modal-close" @click="closeConfirmModal">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="confirm-warning">
+                        <span class="confirm-warning-icon">⚠</span>
+                        <span>{{ actionConfirmMessages[pendingConfirmAction] || 'آیا از انجام این عملیات مطمئن هستید؟' }}</span>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel-modal" @click="closeConfirmModal" :disabled="statusLoading">
+                            انصراف
+                        </button>
+                        <button
+                            type="button"
+                            class="btn-confirm-action"
+                            @click="confirmAction"
+                            :disabled="statusLoading"
+                        >
+                            <span v-if="statusLoading" class="btn-spinner"></span>
+                            {{ statusLoading ? 'در حال انجام...' : 'تأیید' }}
                         </button>
                     </div>
                 </div>

@@ -694,6 +694,7 @@ export const adminOrders = ref([]);
 export const adminOrder = ref(null);
 export const adminOrderLoading = ref(false);
 export const adminOrderError = ref('');
+export const adminOrderSuccess = ref('');
 
 export const adminOrderSearch = ref('');
 export const adminOrderStatusFilter = ref('');
@@ -704,6 +705,7 @@ export const adminOrderTotal = ref(0);
 export async function loadAdminOrders() {
     adminOrderLoading.value = true;
     adminOrderError.value = '';
+    adminOrderSuccess.value = '';
 
     try {
         const params = {
@@ -737,6 +739,7 @@ export async function loadAdminOrders() {
 export async function loadAdminOrder(id) {
     adminOrderLoading.value = true;
     adminOrderError.value = '';
+    adminOrderSuccess.value = '';
     adminOrder.value = null;
 
     try {
@@ -751,8 +754,8 @@ export async function loadAdminOrder(id) {
 }
 
 export async function updateAdminOrderStatus(id, status, cancelledReason = null) {
-    adminOrderLoading.value = true;
     adminOrderError.value = '';
+    adminOrderSuccess.value = '';
 
     try {
         const response = await axios.patch(`/api/admin/orders/${id}/status`, {
@@ -760,16 +763,11 @@ export async function updateAdminOrderStatus(id, status, cancelledReason = null)
             cancelled_reason: cancelledReason,
         });
 
-        if (adminOrder.value && adminOrder.value.id === id) {
-            adminOrder.value.status = status;
-        }
-
+        adminOrderSuccess.value = 'وضعیت سفارش با موفقیت تغییر یافت.';
         return response.data;
     } catch (error) {
         adminOrderError.value = error.response?.data?.errors?.status?.[0] || error.response?.data?.message || 'تغییر وضعیت انجام نشد.';
         throw error;
-    } finally {
-        adminOrderLoading.value = false;
     }
 }
 
