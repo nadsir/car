@@ -23,6 +23,16 @@ export function formatDate(value) {
     return value ? new Date(value).toLocaleDateString('fa-IR') : '—';
 }
 
+export async function cancelOrder(orderId, reason = null) {
+    const token = getToken();
+    const payload = {};
+    if (reason) payload.reason = reason;
+    const response = await axios.patch(`/api/customer/orders/${orderId}/cancel`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+}
+
 // Each page owns its data; logout/account changes clear it and cancel old reads.
 export function useCustomerOrders(url) {
     const data = ref(null);

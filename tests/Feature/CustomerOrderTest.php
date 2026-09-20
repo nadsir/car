@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -40,12 +41,20 @@ class CustomerOrderTest extends TestCase
         ], $overrides));
     }
 
-    private function product(): Product
+    private function product(array $overrides = []): Product
     {
-        return Product::create([
+        return Product::create(array_merge([
             'name' => 'Current product', 'slug' => fake()->uuid(),
             'price' => '999.00', 'stock' => 10, 'is_active' => true,
-        ]);
+        ], $overrides));
+    }
+
+    private function variant(Product $product, array $overrides = []): ProductVariant
+    {
+        return $product->variants()->create(array_merge([
+            'sku' => fake()->uuid(), 'combination_key' => fake()->uuid(),
+            'price' => '125.50', 'stock' => 5, 'is_active' => true,
+        ], $overrides));
     }
 
     public function test_guest_cannot_list_orders(): void
@@ -218,5 +227,403 @@ class CustomerOrderTest extends TestCase
     {
         $this->get('/orders')->assertOk()->assertViewIs('welcome');
         $this->get('/orders/123')->assertOk()->assertViewIs('welcome');
+    }
+
+    // ── Cancellation tests ──────────────────────────────────────
+
+    public function test_customer_can_cancel_own_pending_order(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'pending']);
+        Sanctum::actingAs($user, ['customer']);
+
+        $this->patchJson("/api/customer/orders/{$order->id}/cancel")
+            ->assertOk()
+            ->assertJsonPath('order.status', 'cancelled')
+            ->assertJsonStructure(['order' => ['cancelled_at']]);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 'cancelled',
+        ]);
+    }
+
+    public function test_cancel_records_reason(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'pending']);
+        Sanctum::actingAs($user, ['customer']);
+
+        $this->patchJson("/api/customer/orders/{$order->id}/cancel", [
+            'reason' => 'Changed my mind',
+        ])->assertOk()->assertJsonPath('order.cancelled_reason', 'Changed my mind');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'cancelled_reason' => 'Changed my mind',
+        ]);
+    }
+
+    public function test_customer_cannot_cancel_another_users_order(): void
+    {
+        $owner = $this->customer();
+        $order = $this->order($owner, ['status' => 'pending']);
+        Sanctum::actingAs($this->customer(), ['customer']);
+
+        $this->patchJson("/api/customer/orders/{$order->id}/cancel")->assertNotFound();
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'pending']);
+    }
+
+    public function test_processing_order_cannot_be_cancelled(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'processing']);
+        Sanctum::actingAs($user, ['customer']);
+
+        $this->patchJson("/api/customer/orders/{$order->id}/cancel")->assertStatus(409);
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'processing']);
+    }
+
+    public function test_shipped_order_cannot_be_cancelled(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'shipped']);
+        Sanctum::actingAs($user, ['customer']);
+
+        $this->patchJson("/api/customer/orders/{$order->id}/cancel")->assertStatus(409);
+    }
+
+    public function test_delivered_order_cannot_be_cancelled(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'delivered']);
+        Sanctum::actingAs($user, ['customer']);
+
+        $this->patchJson("/api/customer/orders/{$order->id}/cancel")->assertStatus(409);
+    }
+
+    public function test_cancelled_order_cannot_be_cancelled_again(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'cancelled']);
+        Sanctum::actingAs($user, ['customer']);
+
+        $this->patchJson("/api/customer/orders/{$order->id}/cancel")->assertStatus(409);
+    }
+
+    public function test_show_includes_new_fields(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user);
+        Sanctum::actingAs($user, ['customer']);
+
+        $this->getJson("/api/customer/orders/{$order->id}")->assertOk()
+            ->assertJsonStructure([
+                'order' => [
+                    'paid_at', 'payment_method', 'payment_ref',
+                    'cancelled_at', 'cancelled_reason',
+                ],
+            ]);
+    }
+
+    // ── Status transition tests (unit-level on model) ───────────
+
+    public function test_status_transitions(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'pending']);
+
+        $order->markConfirmed();
+        $this->assertSame('confirmed', $order->fresh()->status);
+
+        $order->markProcessing();
+        $this->assertSame('processing', $order->fresh()->status);
+
+        $order->markShipped();
+        $this->assertSame('shipped', $order->fresh()->status);
+
+        $order->markDelivered();
+        $this->assertSame('delivered', $order->fresh()->status);
+    }
+
+    public function test_invalid_transition_throws(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'delivered']);
+
+        $this->expectException(\LogicException::class);
+        $order->markProcessing();
+    }
+
+    public function test_cancelled_cannot_transition(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'cancelled']);
+
+        $this->expectException(\LogicException::class);
+        $order->markConfirmed();
+    }
+
+    // ── markPaidAndDecrementStock tests ─────────────────────────
+
+    public function test_mark_paid_and_decrement_stock_success(): void
+    {
+        $product = $this->product(['stock' => 10]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'pending']);
+        $order->items()->create([
+            'product_id' => $product->id, 'product_name' => $product->name,
+            'sku' => $product->sku, 'quantity' => 3,
+            'unit_price' => $product->price, 'subtotal' => '2997.00',
+        ]);
+
+        $order->markPaidAndDecrementStock('zarinpal', 'ref-123');
+
+        $this->assertSame('confirmed', $order->fresh()->status);
+        $this->assertNotNull($order->fresh()->paid_at);
+        $this->assertSame('zarinpal', $order->fresh()->payment_method);
+        $this->assertSame('ref-123', $order->fresh()->payment_ref);
+        $this->assertSame(7, $product->fresh()->stock);
+    }
+
+    public function test_mark_paid_prevents_duplicate_payment(): void
+    {
+        $product = $this->product(['stock' => 10]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'pending']);
+        $order->items()->create([
+            'product_id' => $product->id, 'product_name' => $product->name,
+            'sku' => $product->sku, 'quantity' => 2,
+            'unit_price' => $product->price, 'subtotal' => '1998.00',
+        ]);
+
+        $order->markPaidAndDecrementStock('zarinpal', 'ref-1');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Only pending orders can be marked as paid');
+        $order->markPaidAndDecrementStock('zarinpal', 'ref-2');
+    }
+
+    public function test_mark_paid_stock_failure_rolls_back_payment(): void
+    {
+        $product = $this->product(['stock' => 1]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'pending']);
+        $order->items()->create([
+            'product_id' => $product->id, 'product_name' => $product->name,
+            'sku' => $product->sku, 'quantity' => 5,
+            'unit_price' => $product->price, 'subtotal' => '4995.00',
+        ]);
+
+        try {
+            $order->markPaidAndDecrementStock('zarinpal', 'ref-fail');
+        } catch (\RuntimeException $e) {
+            // expected: insufficient stock
+        }
+
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertNull($order->fresh()->paid_at);
+        $this->assertNull($order->fresh()->payment_method);
+        $this->assertNull($order->fresh()->payment_ref);
+        $this->assertSame(1, $product->fresh()->stock);
+    }
+
+    public function test_mark_paid_variant_stock_failure_rolls_back(): void
+    {
+        $product = $this->product(['stock' => 0]);
+        $variant = $this->variant($product, ['stock' => 1]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'pending']);
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'product_name' => $product->name, 'sku' => $variant->sku,
+            'quantity' => 3, 'unit_price' => $variant->price, 'subtotal' => '376.50',
+        ]);
+
+        try {
+            $order->markPaidAndDecrementStock('zarinpal', 'ref-fail');
+        } catch (\RuntimeException $e) {
+            // expected
+        }
+
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertNull($order->fresh()->paid_at);
+        $this->assertSame(1, $variant->fresh()->stock);
+    }
+
+    public function test_mark_paid_multi_item_rollback_on_partial_stock_failure(): void
+    {
+        $productA = $this->product(['stock' => 10]);
+        $productB = $this->product(['stock' => 1]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'pending']);
+        $order->items()->create([
+            'product_id' => $productA->id, 'product_name' => $productA->name,
+            'sku' => $productA->sku, 'quantity' => 2,
+            'unit_price' => $productA->price, 'subtotal' => '1998.00',
+        ]);
+        $order->items()->create([
+            'product_id' => $productB->id, 'product_name' => $productB->name,
+            'sku' => $productB->sku, 'quantity' => 5,
+            'unit_price' => $productB->price, 'subtotal' => '4995.00',
+        ]);
+
+        try {
+            $order->markPaidAndDecrementStock('zarinpal', 'ref-fail');
+        } catch (\RuntimeException $e) {
+            // expected: productB insufficient
+        }
+
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertNull($order->fresh()->paid_at);
+        $this->assertSame(10, $productA->fresh()->stock);
+        $this->assertSame(1, $productB->fresh()->stock);
+    }
+
+    public function test_mark_paid_non_pending_order_throws(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'confirmed']);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Only pending orders can be marked as paid');
+        $order->markPaidAndDecrementStock('zarinpal', 'ref');
+    }
+
+    public function test_mark_paid_cancelled_order_throws(): void
+    {
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'cancelled']);
+
+        $this->expectException(\LogicException::class);
+        $order->markPaidAndDecrementStock('zarinpal', 'ref');
+    }
+
+    // ── Inventory decrement tests ────────────────────────────────
+
+    public function test_decrement_stock_for_product(): void
+    {
+        $product = $this->product(['stock' => 10]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'confirmed']);
+        $order->items()->create([
+            'product_id' => $product->id, 'product_name' => $product->name,
+            'sku' => $product->sku, 'quantity' => 3,
+            'unit_price' => $product->price, 'subtotal' => '2997.00',
+        ]);
+
+        Order::decrementStockForOrder($order);
+        $this->assertSame(7, $product->fresh()->stock);
+    }
+
+    public function test_decrement_stock_for_variant(): void
+    {
+        $product = $this->product(['stock' => 0]);
+        $variant = $this->variant($product, ['stock' => 8]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'confirmed']);
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'product_name' => $product->name, 'sku' => $variant->sku,
+            'quantity' => 2, 'unit_price' => $variant->price, 'subtotal' => '251.00',
+        ]);
+
+        Order::decrementStockForOrder($order);
+        $this->assertSame(6, $variant->fresh()->stock);
+        $this->assertSame(0, $product->fresh()->stock);
+    }
+
+    public function test_decrement_stock_insufficient_throws(): void
+    {
+        $product = $this->product(['stock' => 1]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'confirmed']);
+        $order->items()->create([
+            'product_id' => $product->id, 'product_name' => $product->name,
+            'sku' => $product->sku, 'quantity' => 5,
+            'unit_price' => $product->price, 'subtotal' => '4995.00',
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        Order::decrementStockForOrder($order);
+    }
+
+    public function test_decrement_stock_variant_insufficient_throws(): void
+    {
+        $product = $this->product(['stock' => 0]);
+        $variant = $this->variant($product, ['stock' => 1]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'confirmed']);
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'product_name' => $product->name, 'sku' => $variant->sku,
+            'quantity' => 3, 'unit_price' => $variant->price, 'subtotal' => '376.50',
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        Order::decrementStockForOrder($order);
+    }
+
+    public function test_decrement_stock_non_confirmed_throws(): void
+    {
+        $product = $this->product(['stock' => 10]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'pending']);
+        $order->items()->create([
+            'product_id' => $product->id, 'product_name' => $product->name,
+            'sku' => $product->sku, 'quantity' => 1,
+            'unit_price' => $product->price, 'subtotal' => '999.00',
+        ]);
+
+        $this->expectException(\LogicException::class);
+        Order::decrementStockForOrder($order);
+    }
+
+    public function test_decrement_stock_never_goes_negative(): void
+    {
+        $product = $this->product(['stock' => 2]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'confirmed']);
+        $order->items()->create([
+            'product_id' => $product->id, 'product_name' => $product->name,
+            'sku' => $product->sku, 'quantity' => 3,
+            'unit_price' => $product->price, 'subtotal' => '2997.00',
+        ]);
+
+        try {
+            Order::decrementStockForOrder($order);
+        } catch (\RuntimeException $e) {
+            // expected
+        }
+        $this->assertGreaterThanOrEqual(0, $product->fresh()->stock);
+    }
+
+    public function test_decrement_stock_rollback_on_partial_failure(): void
+    {
+        $productA = $this->product(['stock' => 10]);
+        $productB = $this->product(['stock' => 1]);
+        $user = $this->customer();
+        $order = $this->order($user, ['status' => 'confirmed']);
+        $order->items()->create([
+            'product_id' => $productA->id, 'product_name' => $productA->name,
+            'sku' => $productA->sku, 'quantity' => 2,
+            'unit_price' => $productA->price, 'subtotal' => '1998.00',
+        ]);
+        $order->items()->create([
+            'product_id' => $productB->id, 'product_name' => $productB->name,
+            'sku' => $productB->sku, 'quantity' => 5,
+            'unit_price' => $productB->price, 'subtotal' => '4995.00',
+        ]);
+
+        try {
+            DB::transaction(fn () => Order::decrementStockForOrder($order));
+        } catch (\RuntimeException $e) {
+            // expected – stockB insufficient
+        }
+        $this->assertSame(10, $productA->fresh()->stock);
+        $this->assertSame(1, $productB->fresh()->stock);
     }
 }

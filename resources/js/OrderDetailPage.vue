@@ -1,17 +1,35 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import SiteHeader from './SiteHeader.vue';
 import SiteFooter from './SiteFooter.vue';
-import { useCustomerOrders, statusLabel, formatDate, formatPrice } from './customer-orders.js';
+import { useCustomerOrders, statusLabel, formatDate, formatPrice, cancelOrder } from './customer-orders.js';
 
 const id = window.location.pathname.match(/^\/orders\/(\d+)\/?$/)?.[1];
 const { data, loading, error, load, isLoggedIn } = useCustomerOrders(`/api/customer/orders/${id}`);
 const order = computed(() => data.value?.order);
 const steps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
+const cancelling = ref(false);
+const cancelError = ref('');
 
 function onImgError(event) {
     event.target.onerror = null;
     event.target.src = '/images/placeholder.svg';
+}
+
+async function handleCancel() {
+    if (cancelling.value) return;
+    const confirmed = window.confirm('آیا از لغو این سفارش اطمینان دارید؟');
+    if (!confirmed) return;
+    cancelling.value = true;
+    cancelError.value = '';
+    try {
+        const result = await cancelOrder(id);
+        data.value = { order: result.order };
+    } catch (e) {
+        cancelError.value = e.response?.data?.message || 'لغو سفارش انجام نشد. لطفاً دوباره تلاش کنید.';
+    } finally {
+        cancelling.value = false;
+    }
 }
 </script>
 
@@ -31,14 +49,30 @@ function onImgError(event) {
 
                 <section aria-label="وضعیت سفارش" class="rounded-xl border border-gray-200 bg-white p-5 mb-6">
                     <h2 class="text-sm font-bold mb-4">وضعیت سفارش</h2>
-                    <p v-if="order.status === 'cancelled'" class="text-sm text-red-600">این سفارش لغو شده است.</p>
-                    <ol v-else class="flex flex-wrap items-center gap-2 text-xs">
-                        <li class="text-slate-500">ثبت سفارش</li>
-                        <li v-for="step in steps" :key="step" :aria-current="order.status === step ? 'step' : undefined" class="flex items-center gap-2">
-                            <span aria-hidden="true" class="text-slate-400">←</span>
-                            <span class="rounded-lg px-3 py-2" :class="order.status === step ? 'bg-brand-accent text-dark-900 font-bold' : 'bg-gray-100 text-slate-500'">{{ statusLabel(step) }}{{ order.status === step ? ' (فعلی)' : '' }}</span>
-                        </li>
-                    </ol>
+                    <template v-if="order.status === 'cancelled'">
+                        <p class="text-sm text-red-600 mb-2">این سفارش لغو شده است.</p>
+                        <p v-if="order.cancelled_at" class="text-xs text-slate-500">تاریخ لغو: {{ formatDate(order.cancelled_at) }}</p>
+                        <p v-if="order.cancelled_reason" class="text-xs text-slate-500 mt-1">دلیل لغو: {{ order.cancelled_reason }}</p>
+                    </template>
+                    <template v-else>
+                        <ol class="flex flex-wrap items-center gap-2 text-xs">
+                            <li class="text-slate-500">ثبت سفارش</li>
+                            <li v-for="step in steps" :key="step" :aria-current="order.status === step ? 'step' : undefined" class="flex items-center gap-2">
+                                <span aria-hidden="true" class="text-slate-400">←</span>
+                                <span class="rounded-lg px-3 py-2" :class="order.status === step ? 'bg-brand-accent text-dark-900 font-bold' : 'bg-gray-100 text-slate-500'">{{ statusLabel(step) }}{{ order.status === step ? ' (فعلی)' : '' }}</span>
+                            </li>
+                        </ol>
+                    </template>
+                    <p v-if="cancelError" class="text-xs text-red-600 mt-3">{{ cancelError }}</p>
+                    <button
+                        v-if="order.status === 'pending'"
+                        type="button"
+                        :disabled="cancelling"
+                        class="mt-4 rounded-lg border border-red-300 text-red-600 px-4 py-2 text-xs font-bold hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        @click="handleCancel"
+                    >
+                        {{ cancelling ? 'در حال لغو…' : 'لغو سفارش' }}
+                    </button>
                 </section>
 
                 <section class="rounded-xl border border-gray-200 bg-white p-5 mb-6">

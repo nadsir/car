@@ -294,6 +294,17 @@ class CustomerCheckoutTest extends TestCase
         $this->assertDatabaseCount('order_items', 0);
     }
 
+    public function test_checkout_does_not_decrement_stock(): void
+    {
+        $this->customer();
+        $product = $this->product(['stock' => 10]);
+        $variant = $this->variant($product, ['stock' => 5]);
+        $this->postJson('/api/customer/checkout', $this->payload([$this->line($product, 2, $variant)]))
+            ->assertCreated();
+        $this->assertSame(10, $product->fresh()->stock);
+        $this->assertSame(5, $variant->fresh()->stock);
+    }
+
     public function test_checkout_and_success_pages_have_spa_routes(): void
     {
         $this->get('/checkout')->assertOk()->assertViewIs('welcome');
