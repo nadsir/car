@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\AdminCategoryController;
 use App\Http\Controllers\Api\AdminAuthController;
 use App\Http\Controllers\Api\AdminAttributeController;
 use App\Http\Controllers\Api\AdminProductController;
+use App\Http\Controllers\Api\AdminArticleController;
+use App\Http\Controllers\Api\ArticleController;
 use App\Http\Controllers\Api\AdminVehicleController;
 use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\FilteredProductController;
@@ -56,6 +58,10 @@ Route::get(
     '/categories/{slug}/filters',
     [EffectiveCategoryFilterController::class, 'index']
 );
+
+// ── Public Articles ──────────────────────────────────────────
+Route::get('/articles', [ArticleController::class, 'index']);
+Route::get('/articles/{slug}', [ArticleController::class, 'show']);
 Route::get('/products', [FilteredProductController::class, 'index']);
 Route::get('/products/{id}', [ProductDetailController::class, 'show'])
     ->whereNumber('id');
@@ -76,6 +82,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->whereNumber('order');
     Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->whereNumber('order');
     Route::get('/categories', [AdminCategoryController::class, 'index']);
+    Route::get('/categories/search', [AdminCategoryController::class, 'search']);
     Route::post('/categories', [AdminCategoryController::class, 'store']);
     Route::get('/categories/{category}', [AdminCategoryController::class, 'show']);
     Route::put('/categories/{category}', [AdminCategoryController::class, 'update']);
@@ -116,6 +123,13 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         [AdminProductImageController::class, 'destroy']
     );
 
+    // ── Articles ──────────────────────────────────────────────────────
+    Route::get('/articles', [AdminArticleController::class, 'index']);
+    Route::post('/articles', [AdminArticleController::class, 'store']);
+    Route::get('/articles/{article}', [AdminArticleController::class, 'show']);
+    Route::put('/articles/{article}', [AdminArticleController::class, 'update']);
+    Route::delete('/articles/{article}', [AdminArticleController::class, 'destroy']);
+
     // ── Users ───────────────────────────────────────────────────────
     Route::get('/users', [AdminUserController::class, 'index']);
     Route::get('/users/{user}', [AdminUserController::class, 'show'])->whereNumber('user');
@@ -145,6 +159,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/vehicles/brands/{brand}/models/{model}/generations/{generation}/trims/{trim}', [AdminVehicleController::class, 'showTrim']);
     Route::put('/vehicles/brands/{brand}/models/{model}/generations/{generation}/trims/{trim}', [AdminVehicleController::class, 'updateTrim']);
     Route::delete('/vehicles/brands/{brand}/models/{model}/generations/{generation}/trims/{trim}', [AdminVehicleController::class, 'destroyTrim']);
+
+    Route::get('/vehicles/engines', [AdminVehicleController::class, 'indexAllEngines']);
 
     Route::get('/vehicles/brands/{brand}/models/{model}/generations/{generation}/trims/{trim}/engines', [AdminVehicleController::class, 'indexEngines']);
     Route::post('/vehicles/brands/{brand}/models/{model}/generations/{generation}/trims/{trim}/engines', [AdminVehicleController::class, 'storeEngine']);

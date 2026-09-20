@@ -350,6 +350,31 @@ class AdminVehicleController extends Controller
         return response()->json(['data' => $engines]);
     }
 
+    public function indexAllEngines(): JsonResponse
+    {
+        $engines = VehicleEngine::query()
+            ->where('is_active', true)
+            ->with([
+                'trim:id,name',
+                'trim.generation:id,name',
+                'trim.generation.model:id,name',
+                'trim.generation.model.brand:id,name',
+            ])
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($engine) => [
+                'id' => $engine->id,
+                'name' => $engine->name,
+                'slug' => $engine->slug,
+                'trim' => $engine->trim?->name,
+                'generation' => $engine->trim?->generation?->name,
+                'model' => $engine->trim?->generation?->model?->name,
+                'brand' => $engine->trim?->generation?->model?->brand?->name,
+            ]);
+
+        return response()->json(['data' => $engines]);
+    }
+
     public function storeEngine(
         Request $request,
         VehicleBrand $brand,

@@ -33,6 +33,40 @@ class AdminCategoryController extends Controller
         );
     }
 
+    public function search(Request $request)
+    {
+        $query = $request->get('q', '');
+
+        if (empty(trim($query))) {
+            return response()->json(['data' => []]);
+        }
+
+        $categories = Category::query()
+            ->where('name', 'LIKE', "%{$query}%")
+            ->orWhere('slug', 'LIKE', "%{$query}%")
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->limit(50)
+            ->get();
+
+        // Build ancestor paths for each matched category
+        $results = $categories->map(function ($category) {
+            $ancestors = $category->ancestors()->toArray();
+            return [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'parent_id' => $category->parent_id,
+                'is_active' => (bool) $category->is_active,
+                'sort_order' => $category->sort_order,
+                'ancestors' => $ancestors,
+                'ancestor_ids' => array_column($ancestors, 'id'),
+            ];
+        });
+
+        return response()->json(['data' => $results]);
+    }
+
     public function store(Request $request)
     {
         $category = Category::create($this->validatedData($request));

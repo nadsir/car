@@ -24,4 +24,9 @@ class VehicleBrand extends Model
     {
         return $this->hasMany(VehicleModel::class);
     }
+
+    public function articles(): BelongsToMany
+    {
+        return $this->belongsToMany(Article::class, 'article_brand')->withTimestamps();
+    }
 }

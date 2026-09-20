@@ -6,6 +6,8 @@ export const categories = ref([]);
 export const adminCategories = ref([]);
 export const attributes = ref([]);
 export const categoryAttributes = ref({});
+export const vehicleEngines = ref([]);
+export const vehicleBrands = ref([]);
 
 export const loading = ref(false);
 export const saving = ref(false);
@@ -142,6 +144,78 @@ export async function loadAdminCategories() {
     const response = await axios.get('/api/admin/categories');
 
     adminCategories.value = response.data.data || [];
+}
+
+export const categorySearch = ref('');
+export const selectedCategoryId = ref(null);
+export const expandedCategoryIds = ref(new Set());
+export const categorySearchResults = ref([]);
+export const categorySearchLoading = ref(false);
+
+export async function searchCategories(query) {
+    categorySearch.value = query;
+    categorySearchLoading.value = true;
+    categorySearchResults.value = [];
+
+    if (!query || !query.trim()) {
+        categorySearchLoading.value = false;
+        return;
+    }
+
+    try {
+        const response = await axios.get('/api/admin/categories/search', {
+            params: { q: query.trim() }
+        });
+        categorySearchResults.value = response.data.data || [];
+
+        // Auto-expand ancestors of search results
+        for (const result of categorySearchResults.value) {
+            if (result.ancestor_ids) {
+                for (const ancestorId of result.ancestor_ids) {
+                    expandedCategoryIds.value.add(ancestorId);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Category search failed:', error);
+        categorySearchResults.value = [];
+    } finally {
+        categorySearchLoading.value = false;
+    }
+}
+
+export function toggleCategoryExpand(categoryId) {
+    if (expandedCategoryIds.value.has(categoryId)) {
+        expandedCategoryIds.value.delete(categoryId);
+    } else {
+        expandedCategoryIds.value.add(categoryId);
+    }
+}
+
+export function expandAllCategories() {
+    const collectIds = (categories) => {
+        const ids = [];
+        for (const cat of categories) {
+            ids.push(cat.id);
+            if (cat.children?.length) {
+                ids.push(...collectIds(cat.children));
+            }
+        }
+        return ids;
+    };
+    expandedCategoryIds.value = new Set(collectIds(adminCategories.value));
+}
+
+export function collapseAllCategories() {
+    expandedCategoryIds.value.clear();
+}
+
+export function selectCategory(categoryId) {
+    selectedCategoryId.value = categoryId;
+}
+
+export function clearCategorySelection() {
+    selectedCategoryId.value = null;
 }
 
 export async function load() {
@@ -682,7 +756,8 @@ export async function deleteEngine(brandId, modelId, genId, trimId, engineId) {
 
 export async function loadBrands() {
     const response = await axios.get('/api/vehicles/brands');
-    return response.data.data || [];
+    vehicleBrands.value = response.data.data || [];
+    return vehicleBrands.value;
 }
 
 export async function loadBrandModels(brandId) {
@@ -703,6 +778,31 @@ export async function loadGenerationTrims(genId) {
 export async function loadTrimEngines(trimId) {
     const response = await axios.get(`/api/vehicles/trims/${trimId}/engines`);
     return response.data.data || [];
+}
+
+export async function loadAllVehicleEngines() {
+    try {
+        const response = await axios.get('/api/admin/vehicles/engines');
+        vehicleEngines.value = response.data.data || [];
+        return vehicleEngines.value;
+    } catch (error) {
+        console.error('Failed to load all vehicle engines:', error);
+        vehicleEngines.value = [];
+        return [];
+    }
+}
+
+export async function loadArticleFormData() {
+    try {
+        await Promise.all([
+            loadAdminCategories(),
+            loadAdminProducts(),
+            loadBrands(),
+            loadAllVehicleEngines(),
+        ]);
+    } catch (error) {
+        console.error('Failed to load article form data:', error);
+    }
 }
 
 /*
@@ -951,4 +1051,190 @@ export async function updateAdminUserStatus(id, isActive) {
         adminUserError.value = error.response?.data?.errors?.is_active?.[0] || error.response?.data?.message || 'تغییر وضعیت انجام نشد.';
         throw error;
     }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Articles (Admin)
+|--------------------------------------------------------------------------
+*/
+
+export const adminArticles = ref([]);
+export const adminArticleLoading = ref(false);
+export const adminArticleError = ref('');
+export const adminArticleSuccess = ref('');
+
+export const adminArticleSearch = ref('');
+export const adminArticleStatusFilter = ref('');
+export const adminArticlePage = ref(1);
+export const adminArticleTotalPages = ref(1);
+export const adminArticleTotal = ref(0);
+
+export const articleEditingId = ref(null);
+export const showArticleEditor = ref(false);
+export const articleSaving = ref(false);
+export const articleForm = ref(createEmptyArticleForm());
+
+export function createEmptyArticleForm() {
+    return {
+        title: '',
+        slug: '',
+        excerpt: '',
+        content: '',
+        featured_image: '',
+        status: 'draft',
+        published_at: null,
+        meta_title: '',
+        meta_description: '',
+        canonical_url: '',
+        is_featured: false,
+        author_id: null,
+        categories: [],
+        products: [],
+        vehicles: [],
+        brands: [],
+    };
+}
+
+export function openCreateArticle() {
+    articleEditingId.value = null;
+    articleForm.value = createEmptyArticleForm();
+    showArticleEditor.value = true;
+    adminArticleError.value = '';
+    adminArticleSuccess.value = '';
+    loadArticleFormData();
+}
+
+export function openEditArticle(article) {
+    articleEditingId.value = article.id;
+    articleForm.value = {
+        title: article.title || '',
+        slug: article.slug || '',
+        excerpt: article.excerpt || '',
+        content: article.content || '',
+        featured_image: article.featured_image || '',
+        status: article.status || 'draft',
+        published_at: article.published_at || null,
+        meta_title: article.meta_title || '',
+        meta_description: article.meta_description || '',
+        canonical_url: article.canonical_url || '',
+        is_featured: Boolean(article.is_featured),
+        author_id: article.author_id || null,
+        categories: article.categories?.map(c => c.id) || [],
+        products: article.products?.map(p => p.id) || [],
+        vehicles: article.vehicles?.map(v => v.id) || [],
+        brands: article.brands?.map(b => b.id) || [],
+    };
+    showArticleEditor.value = true;
+    adminArticleError.value = '';
+    adminArticleSuccess.value = '';
+    loadArticleFormData();
+}
+
+export async function loadAdminArticles() {
+    adminArticleLoading.value = true;
+    adminArticleError.value = '';
+    adminArticleSuccess.value = '';
+
+    try {
+        const params = {
+            page: adminArticlePage.value,
+        };
+
+        if (adminArticleSearch.value) {
+            params.search = adminArticleSearch.value;
+        }
+
+        if (adminArticleStatusFilter.value) {
+            params.status = adminArticleStatusFilter.value;
+        }
+
+        const response = await axios.get('/api/admin/articles', { params });
+
+        adminArticles.value = response.data.data || [];
+        adminArticleTotalPages.value = response.data.last_page || 1;
+        adminArticleTotal.value = response.data.total || 0;
+
+        if (adminArticlePage.value > adminArticleTotalPages.value) {
+            adminArticlePage.value = adminArticleTotalPages.value;
+        }
+    } catch (error) {
+        adminArticleError.value = error.response?.data?.message || 'دریافت مقالات انجام نشد.';
+    } finally {
+        adminArticleLoading.value = false;
+    }
+}
+
+export async function loadAdminArticle(id) {
+    adminArticleLoading.value = true;
+    adminArticleError.value = '';
+
+    try {
+        const response = await axios.get(`/api/admin/articles/${id}`);
+        return response.data;
+    } catch (error) {
+        adminArticleError.value = error.response?.data?.message || 'دریافت مقاله انجام نشد.';
+        throw error;
+    } finally {
+        adminArticleLoading.value = false;
+    }
+}
+
+export async function saveArticle() {
+    articleSaving.value = true;
+    adminArticleError.value = '';
+    adminArticleSuccess.value = '';
+
+    try {
+        const data = { ...articleForm.value };
+
+        if (articleEditingId.value) {
+            const response = await axios.put(`/api/admin/articles/${articleEditingId.value}`, data);
+            adminArticleSuccess.value = 'مقاله به‌روزرسانی شد.';
+            return response.data;
+        } else {
+            const response = await axios.post('/api/admin/articles', data);
+            adminArticleSuccess.value = 'مقاله ایجاد شد.';
+            return response.data;
+        }
+    } catch (error) {
+        const errors = error.response?.data?.errors;
+        adminArticleError.value = errors
+            ? Object.values(errors).flat().join(' ')
+            : error.response?.data?.message || 'ذخیره مقاله انجام نشد.';
+        throw error;
+    } finally {
+        articleSaving.value = false;
+    }
+}
+
+export async function deleteArticle(id) {
+    if (!confirm('آیا از حذف این مقاله مطمئن هستید؟')) {
+        return;
+    }
+
+    adminArticleError.value = '';
+    adminArticleSuccess.value = '';
+
+    try {
+        await axios.delete(`/api/admin/articles/${id}`);
+        await loadAdminArticles();
+        adminArticleSuccess.value = 'مقاله حذف شد.';
+    } catch (error) {
+        adminArticleError.value = error.response?.data?.message || 'حذف مقاله انجام نشد.';
+    }
+}
+
+export function goToArticlePage(page) {
+    if (page < 1 || page > adminArticleTotalPages.value) return;
+    adminArticlePage.value = page;
+    loadAdminArticles();
+}
+
+export function closeArticleForm() {
+    articleEditingId.value = null;
+    showArticleEditor.value = false;
+    articleForm.value = createEmptyArticleForm();
+    adminArticleError.value = '';
+    adminArticleSuccess.value = '';
 }

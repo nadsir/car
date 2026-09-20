@@ -89,4 +89,12 @@ class Category extends Model
         ->withTimestamps()
         ->orderByPivot('sort_order');
     }
+
+    /**
+     * Articles in this category
+     */
+    public function articles(): BelongsToMany
+    {
+        return $this->belongsToMany(Article::class, 'article_category')->withTimestamps();
+    }
 }

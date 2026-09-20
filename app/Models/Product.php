@@ -127,4 +127,12 @@ class Product extends Model
             'product_vehicle_compat'
         )->withTimestamps();
     }
+
+    /**
+     * Articles related to this product
+     */
+    public function articles(): BelongsToMany
+    {
+        return $this->belongsToMany(Article::class, 'article_product')->withTimestamps();
+    }
 }

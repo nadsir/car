@@ -39,4 +39,9 @@ class VehicleEngine extends Model
             'product_vehicle_compat'
         )->withTimestamps();
     }
+
+    public function articles(): BelongsToMany
+    {
+        return $this->belongsToMany(Article::class, 'article_vehicle')->withTimestamps();
+    }
 }

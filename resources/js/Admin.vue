@@ -4,7 +4,10 @@ import {
     ref,
     computed,
     onMounted,
+    onUnmounted,
 } from 'vue';
+
+import MultiSelect from './components/MultiSelect.vue';
 
 import {
     products,
@@ -107,12 +110,51 @@ import {
     loadAdminUsers,
     loadAdminUser,
     updateAdminUserStatus,
+    categorySearch,
+    selectedCategoryId,
+    expandedCategoryIds,
+    categorySearchResults,
+    categorySearchLoading,
+    searchCategories,
+    toggleCategoryExpand,
+    expandAllCategories,
+    collapseAllCategories,
+    selectCategory,
+    clearCategorySelection,
+    adminArticles,
+    adminArticleLoading,
+    adminArticleError,
+    adminArticleSuccess,
+    adminArticleSearch,
+    adminArticleStatusFilter,
+    adminArticlePage,
+    adminArticleTotalPages,
+    adminArticleTotal,
+    articleEditingId,
+    showArticleEditor,
+    articleSaving,
+    articleForm,
+    createEmptyArticleForm,
+    openCreateArticle,
+    openEditArticle,
+    loadAdminArticles,
+    loadAdminArticle,
+    saveArticle,
+    deleteArticle,
+    goToArticlePage,
+    closeArticleForm,
+    loadArticleFormData,
+    loadAllVehicleEngines,
+    vehicleEngines,
+    vehicleBrands,
 } from './admin-state';
 
 import AdminOrdersPage from './AdminOrdersPage.vue';
 import AdminOrderDetailPage from './AdminOrderDetailPage.vue';
 import AdminNotification from './AdminNotification.vue';
 import AdminUsersPage from './AdminUsersPage.vue';
+
+
 
 
 async function openEditProduct(id) {
@@ -150,6 +192,61 @@ const categoryAttributeSaving = ref(false);
 const categoryEditingId = ref(null);
 const categorySaving = ref(false);
 const categoryForm = ref(createEmptyCategoryForm());
+
+// Category Manager state
+const showCategoryEditor = ref(false);
+const categoryFormParentOptions = computed(() => {
+    const result = [];
+    const visit = (category, depth = 0) => {
+        if (category.id !== categoryEditingId.value) {
+            result.push({ ...category, depth });
+        }
+        for (const child of category.children || []) {
+            visit(child, depth + 1);
+        }
+    };
+    for (const category of adminCategories.value) {
+        visit(category);
+    }
+    return result;
+});
+
+const selectedCategory = computed(() => {
+    const findCategory = (categories, id) => {
+        for (const cat of categories) {
+            if (cat.id === id) return cat;
+            if (cat.children?.length) {
+                const found = findCategory(cat.children, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    };
+    return selectedCategoryId.value ? findCategory(adminCategories.value, selectedCategoryId.value) : null;
+});
+
+const categoryBreadcrumb = computed(() => {
+    if (!selectedCategory.value) return [];
+    const path = [];
+    let current = selectedCategory.value;
+    while (current) {
+        path.unshift(current);
+        current = current.parent_id ? findCategory(adminCategories.value, current.parent_id) : null;
+    }
+    return path;
+});
+
+function findCategory(categories, id) {
+    for (const cat of categories) {
+        if (cat.id === id) return cat;
+        if (cat.children?.length) {
+            const found = findCategory(cat.children, id);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
 const attributeEditingId = ref(null);
 const attributeSaving = ref(false);
 const attributeForm = ref(createEmptyAttributeForm());
@@ -158,11 +255,9 @@ const attributeValueSaving = ref(false);
 const attributeValueForm = ref(createEmptyAttributeValueForm());
 
 // ── Vehicle Management State ──────────────────────────────────
-const vehicleBrands = ref([]);
 const vehicleModels = ref([]);
 const vehicleGenerations = ref([]);
 const vehicleTrims = ref([]);
-const vehicleEngines = ref([]);
 
 const selectedBrandId = ref(null);
 const selectedModelId = ref(null);
@@ -225,6 +320,11 @@ const nav = [
         key: 'categories',
         label: 'دسته‌بندی‌ها',
         icon: '◫',
+    },
+    {
+        key: 'articles',
+        label: 'مقالات',
+        icon: '📝',
     },
     {
         key: 'attributes',
@@ -379,6 +479,38 @@ const configuredCategory = computed(() => {
     );
 });
 
+// Article form selectors
+const availableCategories = computed(() => {
+    const result = [];
+    const visit = (category, depth = 0) => {
+        result.push({ ...category, depth });
+        for (const child of category.children || []) {
+            visit(child, depth + 1);
+        }
+    };
+    for (const category of adminCategories.value) {
+        visit(category);
+    }
+    return result;
+});
+
+const availableProducts = computed(() => {
+    return products.value.map(p => ({ id: p.id, name: p.name, slug: p.slug }));
+});
+
+const availableBrands = computed(() => {
+    return vehicleBrands.value.map(b => ({ id: b.id, name: b.name, slug: b.slug }));
+});
+
+const availableVehicles = computed(() => {
+    // Return vehicle engines for selection
+    return vehicleEngines.value.map(e => ({ 
+        id: e.id, 
+        name: `${e.name} (${e.trim?.name || ''} - ${e.trim?.generation?.model?.brand?.name || ''})`,
+        slug: e.slug 
+    }));
+});
+
 /*
 |--------------------------------------------------------------------------
 | Helpers
@@ -397,6 +529,18 @@ function formatPrice(value) {
     return Number(value).toLocaleString(
         'fa-IR'
     );
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fa-IR', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 function categoryName(categoryId) {
@@ -604,6 +748,17 @@ async function deleteAttributeValue(value) {
 function openCreateCategory() {
     categoryEditingId.value = null;
     categoryForm.value = createEmptyCategoryForm();
+    showCategoryEditor.value = true;
+    clearCategorySelection();
+    errorMessage.value = '';
+}
+
+function openCreateChildCategory(parentCategory) {
+    categoryEditingId.value = null;
+    categoryForm.value = createEmptyCategoryForm();
+    categoryForm.value.parent_id = parentCategory.id;
+    showCategoryEditor.value = true;
+    selectCategory(parentCategory.id);
     errorMessage.value = '';
 }
 
@@ -618,7 +773,16 @@ function openEditCategory(category) {
         is_active: Boolean(category.is_active),
         sort_order: category.sort_order ?? 0,
     };
+    showCategoryEditor.value = true;
+    selectCategory(category.id);
     errorMessage.value = '';
+}
+
+function closeCategoryEditor() {
+    showCategoryEditor.value = false;
+    categoryEditingId.value = null;
+    categoryForm.value = createEmptyCategoryForm();
+    clearCategorySelection();
 }
 
 async function submitCategory() {
@@ -639,13 +803,14 @@ async function submitCategory() {
         }
 
         await load();
-        openCreateCategory();
-        successMessage.value = 'دسته‌بندی ذخیره شد.';
+        closeCategoryEditor();
+        showAdminNotification('success', 'موفقیت', 'دسته‌بندی ذخیره شد.');
     } catch (error) {
         const errors = error.response?.data?.errors;
         errorMessage.value = errors
             ? Object.values(errors).flat().join(' ')
             : 'ذخیره دسته‌بندی انجام نشد.';
+        showAdminNotification('error', 'خطا', errorMessage.value);
     } finally {
         categorySaving.value = false;
     }
@@ -664,15 +829,19 @@ async function deleteCategory(category) {
         await load();
 
         if (categoryEditingId.value === category.id) {
-            openCreateCategory();
+            closeCategoryEditor();
+        }
+        if (selectedCategoryId.value === category.id) {
+            clearCategorySelection();
         }
 
-        successMessage.value = 'دسته‌بندی حذف شد.';
+        showAdminNotification('success', 'موفقیت', 'دسته‌بندی حذف شد.');
     } catch (error) {
         const errors = error.response?.data?.errors;
         errorMessage.value = errors
             ? Object.values(errors).flat().join(' ')
             : 'حذف دسته‌بندی انجام نشد.';
+        showAdminNotification('error', 'خطا', errorMessage.value);
     }
 }
 
@@ -1609,6 +1778,73 @@ onMounted(async () => {
             'دریافت اطلاعات پنل مدیریت انجام نشد.';
     }
 });
+
+const CategoryTreeNode = {
+    props: ['category', 'selectedId', 'expandedIds'],
+    emits: ['toggle-expand', 'select', 'edit', 'add-child', 'delete'],
+    setup(props, { emit }) {
+        const hasChildren = computed(() => props.category.children && props.category.children.length > 0);
+        const isExpanded = computed(() => props.expandedIds.has(props.category.id));
+        const isSelected = computed(() => props.selectedId === props.category.id);
+
+        function handleClick(event) {
+            if (event.target.closest('.node-toggle') || event.target.closest('.node-actions')) {
+                return;
+            }
+            emit('select', props.category.id);
+            emit('edit', props.category);
+        }
+
+        function handleToggleExpand(event) {
+            event.stopPropagation();
+            emit('toggle-expand', props.category.id);
+        }
+
+        return { hasChildren, isExpanded, isSelected, handleClick, handleToggleExpand };
+    },
+    template: `
+        <div class="tree-node" :class="{ selected: isSelected, has-children: hasChildren }">
+            <div class="node-main" @click="handleClick">
+                <button
+                    v-if="hasChildren"
+                    type="button"
+                    class="node-toggle"
+                    @click="handleToggleExpand"
+                    :aria-expanded="isExpanded"
+                    :aria-label="isExpanded ? 'بستن' : 'باز کردن'"
+                >
+                    <span class="toggle-icon">{{ isExpanded ? '▼' : '▶' }}</span>
+                </button>
+                <div class="node-content">
+                    <strong>{{ category.name }}</strong>
+                    <small dir="ltr">/{{ category.slug }}</small>
+                    <span :class="category.is_active ? 'status ok' : 'status bad'">
+                        {{ category.is_active ? 'فعال' : 'غیرفعال' }}
+                    </span>
+                </div>
+                <div class="node-actions">
+                    <button type="button" class="icon-button" @click.stop="$emit('add-child', category)" title="افزودن زیر‌دسته">+</button>
+                    <button type="button" class="icon-button text-button" @click.stop="$emit('edit', category)" title="ویرایش">✎</button>
+                    <button type="button" class="icon-button danger" @click.stop="$emit('delete', category)" title="حذف">🗑</button>
+                </div>
+            </div>
+            <div v-show="isExpanded && hasChildren" class="node-children">
+                <CategoryTreeNode
+                    v-for="child in category.children"
+                    :key="child.id"
+                    :category="child"
+                    :selected-id="selectedId"
+                    :expanded-ids="expandedIds"
+                    @toggle-expand="$emit('toggle-expand', $event)"
+                    @select="$emit('select', $event)"
+                    @edit="$emit('edit', $event)"
+                    @add-child="$emit('add-child', $event)"
+                    @delete="$emit('delete', $event)"
+                />
+            </div>
+        </div>
+    `
+};
 </script>
 
 <template>
@@ -2143,263 +2379,740 @@ onMounted(async () => {
                         section === 'categories'
                     "
                 >
+                    <div class="category-manager">
+                        <!-- Tree Toolbar -->
+                        <div class="category-manager-toolbar">
+                            <div class="toolbar-left">
+                                <label class="search-wrapper">
+                                    <input
+                                        type="text"
+                                        class="search-input"
+                                        placeholder="جستجوی دسته‌بندی‌ها..."
+                                        v-model="categorySearch"
+                                        @input="searchCategories($event.target.value)"
+                                        @focus="searchCategories(categorySearch)"
+                                    >
+                                    <span v-if="categorySearchLoading" class="search-spinner"></span>
+                                    <button
+                                        v-if="categorySearch"
+                                        type="button"
+                                        class="search-clear"
+                                        @click="categorySearch = ''; searchCategories('')"
+                                    >
+                                        ✕
+                                    </button>
+                                </label>
+                                <span v-if="categorySearch && categorySearchResults.length" class="search-results-count">
+                                    {{ categorySearchResults.length }} نتیجه
+                                </span>
+                            </div>
+                            <div class="toolbar-right">
+                                <button
+                                    type="button"
+                                    class="icon-button"
+                                    @click="expandAllCategories"
+                                    title="باز کردن همه"
+                                >
+                                    ▼
+                                </button>
+                                <button
+                                    type="button"
+                                    class="icon-button"
+                                    @click="collapseAllCategories"
+                                    title="بستن همه"
+                                >
+                                    ▲
+                                </button>
+                                <button
+                                    type="button"
+                                    class="primary"
+                                    @click="openCreateCategory"
+                                >
+                                    + دسته اصلی
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Main Content: Tree + Editor -->
+                        <div class="category-manager-content">
+                            <!-- Left: Category Tree -->
+                            <aside class="category-tree-panel">
+                                <div class="panel-head">
+                                    <h3>درخت دسته‌بندی‌ها</h3>
+                                </div>
+
+                                <div
+                                    v-if="categorySearch && categorySearchResults.length"
+                                    class="search-results-tree"
+                                >
+                                    <div
+                                        v-for="result in categorySearchResults"
+                                        :key="result.id"
+                                        class="tree-node search-result-node"
+                                        :class="{ selected: selectedCategoryId === result.id }"
+                                        @click="selectCategory(result.id); openEditCategory(result)"
+                                    >
+                                        <div class="node-content">
+                                            <span class="node-indent" :style="{ paddingRight: (result.ancestors?.length || 0) * 16 + 'px' }"></span>
+                                            <strong>{{ result.name }}</strong>
+                                            <small>/{{ result.slug }}</small>
+                                            <span :class="result.is_active ? 'status ok' : 'status bad'">
+                                                {{ result.is_active ? 'فعال' : 'غیرفعال' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div v-if="!categorySearchResults.length" class="empty">هیچ دسته‌بندی یافت نشد</div>
+                                </div>
+
+                                <div
+                                    v-else
+                                    class="category-tree"
+                                >
+                                    <CategoryTreeNode
+                                        v-for="category in adminCategories"
+                                        :key="category.id"
+                                        :category="category"
+                                        :selected-id="selectedCategoryId"
+                                        :expanded-ids="expandedCategoryIds"
+                                        @toggle-expand="toggleCategoryExpand"
+                                        @select="selectCategory"
+                                        @edit="openEditCategory"
+                                        @add-child="openCreateChildCategory"
+                                        @delete="deleteCategory"
+                                    />
+                                    <div v-if="!adminCategories.length" class="empty">
+                                        <p>هنوز دسته‌بندی‌ای وجود ندارد</p>
+                                        <button class="primary" @click="openCreateCategory">افزودن اولین دسته</button>
+                                    </div>
+                                </div>
+                            </aside>
+
+                            <!-- Right: Category Editor -->
+                            <aside class="category-editor-panel" v-if="showCategoryEditor || selectedCategory">
+                                <div class="panel-head">
+                                    <h3>{{ categoryEditingId ? 'ویرایش دسته‌بندی' : (selectedCategory ? 'جزئیات دسته' : 'دسته‌بندی جدید') }}</h3>
+                                </div>
+
+                                <div v-if="selectedCategory && !categoryEditingId" class="category-detail">
+                                    <!-- Breadcrumb -->
+                                    <nav class="breadcrumb" aria-label="مسیر دسته‌بندی">
+                                        <ol>
+                                            <li><span>دسته‌بندی‌ها</span></li>
+                                            <li v-for="(crumb, index) in categoryBreadcrumb" :key="crumb.id">
+                                                <span class="sep">/</span>
+                                                <span v-if="index < categoryBreadcrumb.length - 1">{{ crumb.name }}</span>
+                                                <strong v-else>{{ crumb.name }}</strong>
+                                            </li>
+                                        </ol>
+                                    </nav>
+
+                                    <div class="detail-fields">
+                                        <div class="detail-row">
+                                            <label>نام</label>
+                                            <span>{{ selectedCategory.name }}</span>
+                                        </div>
+                                        <div class="detail-row">
+                                            <label>Slug</label>
+                                            <span dir="ltr">{{ selectedCategory.slug }}</span>
+                                        </div>
+                                        <div class="detail-row">
+                                            <label>دسته والد</label>
+                                            <span>{{ selectedCategory.parent_id ? 'دارد' : 'ندارد (ریشه)' }}</span>
+                                        </div>
+                                        <div class="detail-row">
+                                            <label>وضعیت</label>
+                                            <span :class="selectedCategory.is_active ? 'status ok' : 'status bad'">
+                                                {{ selectedCategory.is_active ? 'فعال' : 'غیرفعال' }}
+                                            </span>
+                                        </div>
+                                        <div class="detail-row" v-if="selectedCategory.description">
+                                            <label>توضیحات</label>
+                                            <span>{{ selectedCategory.description }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="detail-actions">
+                                        <button type="button" class="primary" @click="openEditCategory(selectedCategory)">
+                                            ویرایش
+                                        </button>
+                                        <button type="button" class="text-button" @click="openCreateChildCategory(selectedCategory)">
+                                            + افزودن زیر‌دسته
+                                        </button>
+                                        <button type="button" class="text-button danger" @click="deleteCategory(selectedCategory)">
+                                            حذف
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <form
+                                    v-else
+                                    class="category-form"
+                                    @submit.prevent="submitCategory"
+                                >
+                                    <div class="category-form-head">
+                                        <h3>{{ categoryEditingId ? 'ویرایش دسته‌بندی' : 'دسته‌بندی جدید' }}</h3>
+                                        <button
+                                            type="button"
+                                            class="text-button"
+                                            @click="closeCategoryEditor"
+                                        >
+                                            انصراف
+                                        </button>
+                                    </div>
+
+                                    <div class="category-form-grid">
+                                        <label class="form-field">
+                                            <span>نام</span>
+                                            <input v-model.trim="categoryForm.name" required autocomplete="off">
+                                        </label>
+
+                                        <label class="form-field">
+                                            <span>Slug</span>
+                                            <input v-model.trim="categoryForm.slug" required dir="ltr" autocomplete="off">
+                                        </label>
+
+                                        <label class="form-field">
+                                            <span>دسته والد</span>
+                                            <select v-model="categoryForm.parent_id">
+                                                <option :value="null">دسته اصلی (ریشه)</option>
+                                                <option
+                                                    v-for="category in categoryFormParentOptions"
+                                                    :key="category.id"
+                                                    :value="category.id"
+                                                    :disabled="category.id === categoryEditingId"
+                                                >
+                                                    {{ '— '.repeat(category.depth) }}{{ category.name }}
+                                                </option>
+                                            </select>
+                                        </label>
+
+                                        <label class="form-field">
+                                            <span>ترتیب</span>
+                                            <input
+                                                v-model.number="categoryForm.sort_order"
+                                                type="number"
+                                                min="0"
+                                            >
+                                        </label>
+
+                                        <label class="form-field full-width">
+                                            <span>توضیحات</span>
+                                            <textarea v-model.trim="categoryForm.description" rows="2"></textarea>
+                                        </label>
+
+                                        <label class="form-field full-width">
+                                            <span>آدرس تصویر</span>
+                                            <input v-model.trim="categoryForm.image" type="url" dir="ltr">
+                                        </label>
+                                    </div>
+
+                                    <label class="category-active-toggle">
+                                        <input v-model="categoryForm.is_active" type="checkbox">
+                                        دسته فعال باشد
+                                    </label>
+
+                                    <div class="category-form-actions">
+                                        <button
+                                            type="submit"
+                                            class="primary"
+                                            :disabled="categorySaving"
+                                        >
+                                            {{ categorySaving ? 'در حال ذخیره…' : (categoryEditingId ? 'به‌روزرسانی' : 'ایجاد دسته‌بندی') }}
+                                        </button>
+                                    </div>
+                                </form>
+                            </aside>
+
+                            <!-- Empty state when no selection -->
+                            <div v-if="!showCategoryEditor && !selectedCategory" class="category-editor-empty">
+                                <div class="empty-icon">◫</div>
+                                <h3>دسته‌ای انتخاب نشده</h3>
+                                <p>یک دسته را از سمت چپ انتخاب کنید یا دسته جدید ایجاد کنید</p>
+                                <button class="primary" @click="openCreateCategory">+ دسته اصلی جدید</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Attribute Editor (kept from original) -->
+                    <div class="category-attribute-editor">
+                        <div>
+                            <p class="section-label">پیکربندی ویژگی‌ها</p>
+                            <h3>ویژگی‌های دسته‌بندی</h3>
+                            <p class="editor-help">
+                                برای هر ویژگی می‌توانید استفاده از تنظیم والد، فعال‌سازی، یا غیرفعال‌سازی را انتخاب کنید.
+                            </p>
+                        </div>
+
+                        <label class="form-field">
+                            <span>دسته‌بندی</span>
+                            <select
+                                :value="configuredCategoryId || ''"
+                                @change="selectCategoryForAttributes($event.target.value)"
+                            >
+                                <option value="">یک دسته را انتخاب کنید</option>
+                                <option
+                                    v-for="category in categoryConfigurationOptions"
+                                    :key="category.id"
+                                    :value="category.id"
+                                >
+                                    {{ '— '.repeat(category.depth) }}{{ category.name }}
+                                </option>
+                            </select>
+                        </label>
+
+                        <p v-if="categoryAttributeLoading" class="editor-help">
+                            در حال دریافت تنظیمات…
+                        </p>
+
+                        <template v-else-if="configuredCategory">
+                            <div class="configuration-heading">
+                                تنظیم ویژگی‌ها برای «{{ configuredCategory.name }}»
+                            </div>
+
+                            <div class="category-attribute-config-list">
+                                <div
+                                    v-for="attribute in attributes"
+                                    :key="attribute.id"
+                                    class="category-attribute-config"
+                                    :class="{
+                                        enabled: isCategoryAttributeConfigured(attribute.id),
+                                        inherited: isCategoryAttributeInherited(attribute.id),
+                                    }"
+                                >
+                                    <div class="config-toggle-row">
+                                        <span class="config-label">
+                                            <strong>{{ attribute.name }}</strong>
+                                            <small>{{ attribute.type }}</small>
+                                        </span>
+
+                                        <select
+                                            class="attribute-state-select"
+                                            :value="getAttributeState(attribute.id)"
+                                            @change="setAttributeState(attribute, $event.target.value)"
+                                        >
+                                            <option
+                                                v-if="configuredCategory?.parent_id"
+                                                value="inherit"
+                                            >
+                                                استفاده از تنظیم والد
+                                            </option>
+                                            <option value="enabled">فعال</option>
+                                            <option value="disabled">غیرفعال</option>
+                                        </select>
+                                    </div>
+
+                                    <div
+                                        v-if="isCategoryAttributeConfigured(attribute.id)"
+                                        class="config-fields"
+                                    >
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                :checked="categoryAttributeConfiguration(attribute.id).is_required"
+                                                @change="updateCategoryAttributeConfig(attribute.id, 'is_required', $event.target.checked)"
+                                            >
+                                            اجباری
+                                        </label>
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                :checked="categoryAttributeConfiguration(attribute.id).is_filterable"
+                                                @change="updateCategoryAttributeConfig(attribute.id, 'is_filterable', $event.target.checked)"
+                                            >
+                                            فیلتر
+                                        </label>
+                                        <label :class="{ disabled: !supportsVariantAxis(attribute) }">
+                                            <input
+                                                type="checkbox"
+                                                :disabled="!supportsVariantAxis(attribute)"
+                                                :checked="categoryAttributeConfiguration(attribute.id).is_variant_axis"
+                                                @change="updateCategoryAttributeConfig(attribute.id, 'is_variant_axis', $event.target.checked)"
+                                            >
+                                            محور تنوع
+                                        </label>
+                                        <label class="sort-input">
+                                            ترتیب
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                :value="categoryAttributeConfiguration(attribute.id).sort_order"
+                                                @input="updateCategoryAttributeConfig(attribute.id, 'sort_order', Number($event.target.value) || 0)"
+                                            >
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="config-actions">
+                                <button
+                                    type="button"
+                                    class="primary"
+                                    :disabled="categoryAttributeSaving"
+                                    @click="saveCategoryAttributes"
+                                >
+                                    {{ categoryAttributeSaving ? 'در حال ذخیره…' : 'ذخیره تنظیمات' }}
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </section>
+
+                <!-- ================================================= -->
+                <!-- ARTICLES -->
+                <!-- ================================================= -->
+
+                <section
+                    v-else-if="
+                        section === 'articles'
+                    "
+                >
                     <div class="panel">
                         <div class="panel-head">
                             <div>
                                 <p class="section-label">
-                                    ساختار فروشگاه
+                                    مدیریت محتوا
                                 </p>
 
                                 <h2>
-                                    دسته‌بندی‌ها
+                                    مقالات
                                 </h2>
                             </div>
 
                             <button
                                 type="button"
                                 class="primary"
-                                @click="openCreateCategory"
+                                @click="openCreateArticle"
                             >
-                                + دسته جدید
+                                + مقاله جدید
                             </button>
                         </div>
 
-                        <form
-                            class="category-form"
-                            @submit.prevent="submitCategory"
-                        >
-                            <div class="category-form-head">
-                                <h3>
-                                    {{ categoryEditingId ? 'ویرایش دسته‌بندی' : 'دسته‌بندی جدید' }}
-                                </h3>
-
-                                <button
-                                    v-if="categoryEditingId"
-                                    type="button"
-                                    class="text-button"
-                                    @click="openCreateCategory"
-                                >
-                                    انصراف
-                                </button>
-                            </div>
-
-                            <div class="category-form-grid">
-                                <label class="form-field">
-                                    <span>نام</span>
-                                    <input v-model.trim="categoryForm.name" required>
+                        <!-- Search & Filter -->
+                        <div class="articles-toolbar">
+                            <div class="toolbar-left">
+                                <label class="search-wrapper">
+                                    <input
+                                        type="text"
+                                        class="search-input"
+                                        placeholder="جستجوی مقالات..."
+                                        v-model="adminArticleSearch"
+                                        @input="loadAdminArticles"
+                                    >
+                                    <button
+                                        v-if="adminArticleSearch"
+                                        type="button"
+                                        class="search-clear"
+                                        @click="adminArticleSearch = ''; loadAdminArticles()"
+                                    >
+                                        ✕
+                                    </button>
                                 </label>
 
-                                <label class="form-field">
-                                    <span>Slug</span>
-                                    <input v-model.trim="categoryForm.slug" required dir="ltr">
-                                </label>
-
-                                <label class="form-field">
-                                    <span>دسته والد</span>
-                                    <select v-model="categoryForm.parent_id">
-                                        <option :value="null">دسته اصلی</option>
-                                        <option
-                                            v-for="category in categoryConfigurationOptions"
-                                            :key="category.id"
-                                            :value="category.id"
-                                            :disabled="category.id === categoryEditingId"
-                                        >
-                                            {{ '— '.repeat(category.depth) }}{{ category.name }}
-                                        </option>
+                                <label class="form-field filter-select">
+                                    <span>وضعیت</span>
+                                    <select v-model="adminArticleStatusFilter" @change="loadAdminArticles">
+                                        <option value="">همه</option>
+                                        <option value="draft">پیش‌نویس</option>
+                                        <option value="published">منتشرشده</option>
                                     </select>
                                 </label>
-
-                                <label class="form-field">
-                                    <span>ترتیب</span>
-                                    <input
-                                        v-model.number="categoryForm.sort_order"
-                                        type="number"
-                                        min="0"
-                                    >
-                                </label>
-
-                                <label class="form-field full-width">
-                                    <span>توضیحات</span>
-                                    <textarea v-model.trim="categoryForm.description" rows="2"></textarea>
-                                </label>
-
-                                <label class="form-field full-width">
-                                    <span>آدرس تصویر</span>
-                                    <input v-model.trim="categoryForm.image" type="url" dir="ltr">
-                                </label>
-                            </div>
-
-                            <label class="category-active-toggle">
-                                <input v-model="categoryForm.is_active" type="checkbox">
-                                دسته فعال باشد
-                            </label>
-
-                            <div class="category-form-actions">
-                                <button
-                                    type="submit"
-                                    class="primary"
-                                    :disabled="categorySaving"
-                                >
-                                    {{ categorySaving ? 'در حال ذخیره…' : 'ذخیره دسته‌بندی' }}
-                                </button>
-                            </div>
-                        </form>
-
-                        <div class="category-list">
-                            <div
-                                v-for="category in categoryConfigurationOptions"
-                                :key="category.id"
-                                class="category-item"
-                            >
-                                <div>
-                                    <strong>
-                                        {{ '— '.repeat(category.depth) }}{{ category.name }}
-                                    </strong>
-
-                                    <small>
-                                        /
-                                        {{
-                                            category.slug
-                                        }}
-                                    </small>
-                                </div>
-
-                                <div class="category-row-actions">
-                                    <span :class="category.is_active ? 'status ok' : 'status bad'">
-                                        {{ category.is_active ? 'فعال' : 'غیرفعال' }}
-                                    </span>
-
-                                    <button type="button" class="text-button" @click="openEditCategory(category)">
-                                        ویرایش
-                                    </button>
-
-                                    <button type="button" class="text-button danger" @click="deleteCategory(category)">
-                                        حذف
-                                    </button>
-                                </div>
                             </div>
                         </div>
 
-                        <div class="category-attribute-editor">
-                            <div>
-                                <p class="section-label">پیکربندی ویژگی‌ها</p>
-                                <h3>ویژگی‌های دسته‌بندی</h3>
-                                <p class="editor-help">
-                                    برای هر ویژگی می‌توانید استفاده از تنظیم والد، فعال‌سازی، یا غیرفعال‌سازی را انتخاب کنید.
-                                </p>
-                            </div>
+                        <!-- Articles List -->
+                        <div
+                            v-if="adminArticleLoading"
+                            class="loading"
+                        >
+                            <div class="spinner"></div>
+                            <span>در حال بارگذاری مقالات...</span>
+                        </div>
 
-                            <label class="form-field">
-                                <span>دسته‌بندی</span>
-                                <select
-                                    :value="configuredCategoryId || ''"
-                                    @change="selectCategoryForAttributes($event.target.value)"
-                                >
-                                    <option value="">یک دسته را انتخاب کنید</option>
-                                    <option
-                                        v-for="category in categoryConfigurationOptions"
-                                        :key="category.id"
-                                        :value="category.id"
-                                    >
-                                        {{ '— '.repeat(category.depth) }}{{ category.name }}
-                                    </option>
-                                </select>
-                            </label>
-
-                            <p v-if="categoryAttributeLoading" class="editor-help">
-                                در حال دریافت تنظیمات…
-                            </p>
-
-                            <template v-else-if="configuredCategory">
-                                <div class="configuration-heading">
-                                    تنظیم ویژگی‌ها برای «{{ configuredCategory.name }}»
+                        <template v-else>
+                            <div
+                                v-if="adminArticles.length"
+                                class="articles-table"
+                            >
+                                <div class="table-header">
+                                    <div class="col-title">عنوان</div>
+                                    <div class="col-status">وضعیت</div>
+                                    <div class="col-author">نویسنده</div>
+                                    <div class="col-date">تاریخ انتشار</div>
+                                    <div class="col-featured">ویژه</div>
+                                    <div class="col-actions">عملیات</div>
                                 </div>
 
-                                <div class="category-attribute-config-list">
-                                    <div
-                                        v-for="attribute in attributes"
-                                        :key="attribute.id"
-                                        class="category-attribute-config"
-                                        :class="{
-                                            enabled: isCategoryAttributeConfigured(attribute.id),
-                                            inherited: isCategoryAttributeInherited(attribute.id),
-                                        }"
-                                    >
-                                        <div class="config-toggle-row">
-                                            <span class="config-label">
-                                                <strong>{{ attribute.name }}</strong>
-                                                <small>{{ attribute.type }}</small>
-                                            </span>
+                                <div
+                                    v-for="article in adminArticles"
+                                    :key="article.id"
+                                    class="table-row"
+                                >
+                                    <div class="col-title">
+                                        <strong>{{ article.title }}</strong>
+                                        <small dir="ltr">/{{ article.slug }}</small>
+                                    </div>
 
-                                            <select
-                                                class="attribute-state-select"
-                                                :value="getAttributeState(attribute.id)"
-                                                @change="setAttributeState(attribute, $event.target.value)"
-                                            >
-                                                <option
-                                                    v-if="configuredCategory?.parent_id"
-                                                    value="inherit"
-                                                >
-                                                    استفاده از تنظیم والد
-                                                </option>
-                                                <option value="enabled">فعال</option>
-                                                <option value="disabled">غیرفعال</option>
-                                            </select>
-                                        </div>
+                                    <div class="col-status">
+                                        <span :class="article.status === 'published' ? 'status ok' : 'status warning'">
+                                            {{ article.status === 'published' ? 'منتشرشده' : 'پیش‌نویس' }}
+                                        </span>
+                                    </div>
 
-                                        <div
-                                            v-if="isCategoryAttributeConfigured(attribute.id)"
-                                            class="config-fields"
-                                        >
-                                            <label>
-                                                <input
-                                                    type="checkbox"
-                                                    :checked="categoryAttributeConfiguration(attribute.id).is_required"
-                                                    @change="updateCategoryAttributeConfig(attribute.id, 'is_required', $event.target.checked)"
-                                                >
-                                                اجباری
-                                            </label>
-                                            <label>
-                                                <input
-                                                    type="checkbox"
-                                                    :checked="categoryAttributeConfiguration(attribute.id).is_filterable"
-                                                    @change="updateCategoryAttributeConfig(attribute.id, 'is_filterable', $event.target.checked)"
-                                                >
-                                                فیلتر
-                                            </label>
-                                            <label :class="{ disabled: !supportsVariantAxis(attribute) }">
-                                                <input
-                                                    type="checkbox"
-                                                    :disabled="!supportsVariantAxis(attribute)"
-                                                    :checked="categoryAttributeConfiguration(attribute.id).is_variant_axis"
-                                                    @change="updateCategoryAttributeConfig(attribute.id, 'is_variant_axis', $event.target.checked)"
-                                                >
-                                                محور تنوع
-                                            </label>
-                                            <label class="sort-input">
-                                                ترتیب
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    :value="categoryAttributeConfiguration(attribute.id).sort_order"
-                                                    @input="updateCategoryAttributeConfig(attribute.id, 'sort_order', Number($event.target.value) || 0)"
-                                                >
-                                            </label>
-                                        </div>
+                                    <div class="col-author">
+                                        {{ article.author?.name || '—' }}
+                                    </div>
+
+                                    <div class="col-date">
+                                        {{ article.published_at ? formatDate(article.published_at) : '—' }}
+                                    </div>
+
+                                    <div class="col-featured">
+                                        <span v-if="article.is_featured" class="badge featured">⭐ ویژه</span>
+                                        <span v-else class="badge normal">—</span>
+                                    </div>
+
+                                    <div class="col-actions">
+                                        <button type="button" class="text-button" @click="openEditArticle(article)">
+                                            ویرایش
+                                        </button>
+                                        <button type="button" class="text-button danger" @click="deleteArticle(article.id)">
+                                            حذف
+                                        </button>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="config-actions">
+                            <div
+                                v-else
+                                class="empty"
+                            >
+                                <div class="empty-icon">📝</div>
+                                <template v-if="adminArticleSearch || adminArticleStatusFilter">
+                                    <h3>نتیجه‌ای یافت نشد</h3>
+                                    <p>هیچ مقاله‌ای با فیلترهای انتخاب شده یافت نشد.</p>
+                                </template>
+                                <template v-else>
+                                    <h3>هنوز مقاله‌ای وجود ندارد</h3>
+                                    <p>اولین مقاله را اضافه کنید.</p>
                                     <button
                                         type="button"
                                         class="primary"
-                                        :disabled="categoryAttributeSaving"
-                                        @click="saveCategoryAttributes"
+                                        @click="openCreateArticle"
                                     >
-                                        {{ categoryAttributeSaving ? 'در حال ذخیره…' : 'ذخیره تنظیمات' }}
+                                        + مقاله جدید
+                                    </button>
+                                </template>
+                            </div>
+
+                            <!-- Pagination -->
+                            <div
+                                v-if="adminArticleTotalPages > 1"
+                                class="articles-pagination"
+                            >
+                                <span class="pagination-info">
+                                    صفحه {{ adminArticlePage }} از {{ adminArticleTotalPages }} — {{ adminArticleTotal }} مقاله
+                                </span>
+
+                                <div class="pagination-buttons">
+                                    <button
+                                        type="button"
+                                        class="pagination-btn"
+                                        :disabled="adminArticlePage <= 1"
+                                        @click="goToArticlePage(adminArticlePage - 1)"
+                                    >
+                                        ◀ قبلی
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="pagination-btn"
+                                        :disabled="adminArticlePage >= adminArticleTotalPages"
+                                        @click="goToArticlePage(adminArticlePage + 1)"
+                                    >
+                                        بعدی ▶
                                     </button>
                                 </div>
-                            </template>
+                            </div>
+                        </template>
+
+                        <!-- Article Form Modal -->
+                        <div
+                            v-if="showArticleEditor"
+                            class="modal-overlay"
+                            @click.self="closeArticleForm"
+                        >
+                            <div class="modal article-form-modal">
+                                <div class="modal-header">
+                                    <h3>{{ articleEditingId ? 'ویرایش مقاله' : 'مقاله جدید' }}</h3>
+                                    <button type="button" class="modal-close" @click="closeArticleForm">✕</button>
+                                </div>
+
+                                <form
+                                    class="modal-body"
+                                    @submit.prevent="saveArticle"
+                                >
+                                    <div class="form-section">
+                                        <h4>اطلاعات اصلی</h4>
+
+                                        <div class="form-grid">
+                                            <label class="form-field">
+                                                <span>عنوان <span class="required">*</span></span>
+                                                <input v-model.trim="articleForm.title" required autocomplete="off">
+                                            </label>
+
+                                            <label class="form-field">
+                                                <span>Slug <span class="required">*</span></span>
+                                                <input v-model.trim="articleForm.slug" required dir="ltr" autocomplete="off">
+                                            </label>
+
+                                            <label class="form-field">
+                                                <span>وضعیت</span>
+                                                <select v-model="articleForm.status">
+                                                    <option value="draft">پیش‌نویس</option>
+                                                    <option value="published">منتشرشده</option>
+                                                </select>
+                                            </label>
+
+                                            <label class="form-field">
+                                                <span>تاریخ انتشار</span>
+                                                <input v-model="articleForm.published_at" type="datetime-local">
+                                            </label>
+
+                                            <label class="form-field">
+                                                <span>نویسنده</span>
+                                                <select v-model="articleForm.author_id">
+                                                    <option value="">خودکار (کاربر جاری)</option>
+                                                </select>
+                                            </label>
+
+                                            <label class="form-field full-width">
+                                                <span>خلاصه</span>
+                                                <textarea v-model.trim="articleForm.excerpt" rows="3" placeholder="خلاصه کوتاه مقاله برای نمایش در لیست‌ها"></textarea>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h4>محتوای مقاله</h4>
+
+                                        <label class="form-field full-width">
+                                            <span>متن کامل</span>
+                                            <textarea v-model.trim="articleForm.content" rows="15" class="content-editor" placeholder="محتوای مقاله (برای ویرایشگر غنی در آینده آماده است)"></textarea>
+                                        </label>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h4>تصویر شاخص</h4>
+
+                                        <label class="form-field full-width">
+                                            <span>آدرس تصویر</span>
+                                            <input v-model.trim="articleForm.featured_image" type="url" dir="ltr" placeholder="https://example.com/image.jpg">
+                                        </label>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h4>روابط</h4>
+
+                                        <div class="form-grid">
+                                            <label class="form-field">
+                                                <span>دسته‌بندی‌ها</span>
+                                                <div class="multi-select-wrapper">
+                                                    <MultiSelect
+                                                        v-model="articleForm.categories"
+                                                        :options="availableCategories"
+                                                        option-label="name"
+                                                        option-value="id"
+                                                        placeholder="جستجو و انتخاب دسته‌بندی‌ها..."
+                                                        :searchable="true"
+                                                    />
+                                                </div>
+                                            </label>
+
+                                            <label class="form-field">
+                                                <span>محصولات</span>
+                                                <div class="multi-select-wrapper">
+                                                    <MultiSelect
+                                                        v-model="articleForm.products"
+                                                        :options="availableProducts"
+                                                        option-label="name"
+                                                        option-value="id"
+                                                        placeholder="جستجو و انتخاب محصولات..."
+                                                        :searchable="true"
+                                                    />
+                                                </div>
+                                            </label>
+
+                                            <label class="form-field">
+                                                <span>خودروها (موتورها)</span>
+                                                <div class="multi-select-wrapper">
+                                                    <MultiSelect
+                                                        v-model="articleForm.vehicles"
+                                                        :options="availableVehicles"
+                                                        option-label="name"
+                                                        option-value="id"
+                                                        placeholder="جستجو و انتخاب موتورهای خودرو..."
+                                                        :searchable="true"
+                                                    />
+                                                </div>
+                                            </label>
+
+                                            <label class="form-field">
+                                                <span>برندها</span>
+                                                <div class="multi-select-wrapper">
+                                                    <MultiSelect
+                                                        v-model="articleForm.brands"
+                                                        :options="availableBrands"
+                                                        option-label="name"
+                                                        option-value="id"
+                                                        placeholder="جستجو و انتخاب برندها..."
+                                                        :searchable="true"
+                                                    />
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <h4>SEO</h4>
+
+                                        <div class="form-grid">
+                                            <label class="form-field">
+                                                <span>Meta Title</span>
+                                                <input v-model.trim="articleForm.meta_title" maxlength="60" placeholder="حداکثر 60 کاراکتر">
+                                            </label>
+
+                                            <label class="form-field">
+                                                <span>Canonical URL</span>
+                                                <input v-model.trim="articleForm.canonical_url" type="url" dir="ltr" placeholder="https://example.com/article-slug">
+                                            </label>
+
+                                            <label class="form-field full-width">
+                                                <span>Meta Description</span>
+                                                <textarea v-model.trim="articleForm.meta_description" rows="2" maxlength="160" placeholder="حداکثر 160 کاراکتر"></textarea>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-section">
+                                        <label class="checkbox-field">
+                                            <input type="checkbox" v-model="articleForm.is_featured">
+                                            <span>مقاله ویژه (نمایش در صفحه اصلی)</span>
+                                        </label>
+                                    </div>
+
+                                    <div class="modal-footer">
+                                        <button type="button" class="text-button" @click="closeArticleForm">
+                                            انصراف
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            class="primary"
+                                            :disabled="articleSaving"
+                                        >
+                                            {{ articleSaving ? 'در حال ذخیره…' : (articleEditingId ? 'به‌روزرسانی' : 'ایجاد مقاله') }}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -5890,6 +6603,8 @@ v-else-if="section === 'orders'"
     font-size: 10px;
 }
 
+}
+
 @media (max-width: 700px) {
     .selected-images-grid {
         grid-template-columns:
@@ -7644,53 +8359,965 @@ v-else-if="section === 'orders'"
 }
 
 
+/* =========================================================
+   CATEGORY MANAGER
+========================================================= */
+
+.category-manager {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 200px);
+    min-height: 600px;
+}
+
+.category-manager-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fff;
+    border: 1px solid #eef0f5;
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 40px 10px 14px;
+    border: 1px solid #e0e0ea;
+    border-radius: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fafbfc;
+    transition: all 0.15s;
+    direction: rtl;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #6563d9;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(101, 99, 217, 0.15);
+}
+
+.search-spinner {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e0e0ea;
+    border-top-color: #6563d9;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: translateY(-50%) rotate(360deg); }
+}
+
+.search-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: #f0f0f5;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    transition: all 0.15s;
+}
+
+.search-clear:hover {
+    background: #e0e0ea;
+    color: #333;
+}
+
+.search-results-count {
+    font-size: 12px;
+    color: #999aae;
+    padding: 4px 8px;
+    background: #f5f5fa;
+    border-radius: 6px;
+}
+
+.icon-button {
+    width: 36px;
+    height: 36px;
+    border: 1px solid #e0e0ea;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: all 0.15s;
+}
+
+.icon-button:hover {
+    border-color: #6563d9;
+    color: #6563d9;
+    background: #fafaff;
+}
+
+.category-manager-content {
+    display: flex;
+    flex: 1;
+    gap: 16px;
+    overflow: hidden;
+}
+
+.category-tree-panel {
+    width: 380px;
+    flex-shrink: 0;
+    background: #fff;
+    border: 1px solid #eef0f5;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 320px;
+}
+
+.category-tree-panel .panel-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f0f5;
+}
+
+.category-tree-panel .panel-head h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #36384b;
+}
+
+.category-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.search-results-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.tree-node {
+    border-radius: 8px;
+    transition: background 0.1s;
+}
+
+.tree-node:hover {
+    background: #fafbfc;
+}
+
+.tree-node.selected {
+    background: #efefff;
+}
+
+.node-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.1s;
+}
+
+.node-main:hover {
+    background: #f5f5fa;
+}
+
+.node-toggle {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 10px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+
+.node-toggle:hover {
+    background: #f0f0f5;
+    color: #333;
+}
+
+.toggle-icon {
+    display: block;
+    transition: transform 0.15s;
+}
+
+.node-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.node-content strong {
+    font-size: 13px;
+    color: #36384b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.node-content small {
+    font-size: 11px;
+    color: #999aae;
+    white-space: nowrap;
+}
+
+.node-content .status {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.node-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.tree-node:hover .node-actions {
+    opacity: 1;
+}
+
+.node-actions .icon-button {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+    border: none;
+    background: transparent;
+    color: #999;
+}
+
+.node-actions .icon-button:hover {
+    background: #f0f0f5;
+    color: #333;
+}
+
+.node-actions .icon-button.danger:hover {
+    background: #fff0f1;
+    color: #dd6870;
+}
+
+.node-children {
+    margin-right: 28px;
+    border-right: 1px dashed #eef0f5;
+    padding-right: 8px;
+}
+
+.category-editor-panel {
+    flex: 1;
+    min-width: 350px;
+    max-width: 500px;
+    background: #fff;
+    border: 1px solid #eef0f5;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.category-editor-panel .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f0f5;
+}
+
+.category-editor-panel .panel-head h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #36384b;
+}
+
+.category-detail {
+    padding: 16px;
+}
+
+.breadcrumb {
+    margin-bottom: 16px;
+}
+
+.breadcrumb ol {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+    color: #999;
+}
+
+.breadcrumb li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.breadcrumb .sep {
+    color: #ccc;
+}
+
+.breadcrumb strong {
+    color: #36384b;
+}
+
+.detail-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f5;
+}
+
+.detail-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.detail-row label {
+    width: 100px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: #999;
+    font-weight: 500;
+}
+
+.detail-row span {
+    flex: 1;
+    font-size: 13px;
+    color: #36384b;
+    word-break: break-word;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.category-editor-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: #999;
+    background: #fafbfc;
+    border: 1px dashed #eef0f5;
+    border-radius: 12px;
+    margin: 16px;
+}
+
+.category-editor-empty .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.category-editor-empty h3 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    color: #666;
+}
+
+.category-editor-empty p {
+    margin: 0 0 20px;
+    font-size: 13px;
+}
+
+.category-form {
+    padding: 16px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.category-form-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f5;
+}
+
+.category-form-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #36384b;
+}
+
+.category-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-field.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-field span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+    padding: 10px 12px;
+    border: 1px solid #e0e0ea;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    transition: all 0.15s;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    outline: none;
+    border-color: #6563d9;
+    box-shadow: 0 0 0 3px rgba(101, 99, 217, 0.15);
+}
+
+.form-field input[dir="ltr"] {
+    direction: ltr;
+    text-align: left;
+}
+
+.category-active-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #fafbfc;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    cursor: pointer;
+}
+
+.category-active-toggle input {
+    width: 18px;
+    height: 18px;
+    accent-color: #6563d9;
+}
+
+.category-active-toggle span {
+    font-size: 13px;
+    color: #36384b;
+}
+
+.category-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f5;
+}
+
+.search-result-node .node-content {
+    padding-right: 8px;
+}
+
+/* Mobile responsive */
+@media (max-width: 1024px) {
+    .category-manager-content {
+        flex-direction: column;
+    }
+
+    .category-tree-panel {
+        width: 100%;
+        max-height: 400px;
+    }
+
+    .category-editor-panel {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .category-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .category-manager-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+        justify-content: center;
+    }
+
+    .search-wrapper {
+        max-width: none;
+    }
+
+    .detail-row {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .detail-row label {
+        width: auto;
+    }
+}
+
+/* =========================================================
+   ARTICLES
+========================================================= */
+
+.articles-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fff;
+    border: 1px solid #eef0f5;
+    border-radius: 12px;
+    margin-bottom: 16px;
+}
+
+.articles-toolbar .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.articles-toolbar .search-wrapper {
+    max-width: 400px;
+    flex: 1;
+}
+
+.articles-toolbar .filter-select {
+    min-width: 180px;
+}
+
+.articles-table {
+    overflow-x: auto;
+}
+
+.articles-table .table-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.5fr 0.8fr 1.5fr;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #fafbfc;
+    border: 1px solid #eef0f5;
+    border-radius: 8px 8px 0 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-align: right;
+}
+
+.articles-table .table-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.5fr 0.8fr 1.5fr;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid #eef0f5;
+    border-top: none;
+    align-items: center;
+    font-size: 13px;
+}
+
+.articles-table .table-row:last-child {
+    border-radius: 0 0 8px 8px;
+}
+
+.articles-table .table-row:nth-child(even) {
+    background: #fafbfc;
+}
+
+.articles-table .col-title strong {
+    display: block;
+    color: #36384b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.articles-table .col-title small {
+    display: block;
+    color: #999aae;
+    font-size: 11px;
+}
+
+.articles-table .status {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.articles-table .status.ok {
+    background: #e7faf3;
+    color: #27a37a;
+}
+
+.articles-table .status.warning {
+    background: #fff8e1;
+    color: #f5a623;
+}
+
+.articles-table .badge.featured {
+    background: #fff8e1;
+    color: #f5a623;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.articles-table .badge.normal {
+    color: #999;
+    font-size: 11px;
+}
+
+.articles-table .col-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.articles-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.articles-pagination .pagination-info {
+    font-size: 13px;
+    color: #666;
+}
+
+.articles-pagination .pagination-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.articles-pagination .pagination-btn {
+    padding: 6px 14px;
+    border: 1px solid #e0e0ea;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.15s;
+}
+
+.articles-pagination .pagination-btn:hover:not(:disabled) {
+    border-color: #6563d9;
+    color: #6563d9;
+}
+
+.articles-pagination .pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Article Form Modal */
+.article-form-modal {
+    max-width: 900px !important;
+    max-height: 90vh;
+    overflow: visible;
+}
+
+.article-form-modal .modal-body {
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.modal-body {
+    padding: 0;
+}
+
+.form-section {
+    padding: 24px;
+    border-bottom: 1px solid #f0f0f5;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.form-section h4 {
+    margin: 0 0 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #36384b;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f5;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.content-editor {
+    font-family: 'SF Mono', SFMono-Regular, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 300px;
+    direction: rtl;
+}
+
+.multi-select-wrapper {
+    min-width: 280px;
+}
+
+.required {
+    color: #dd6870;
+    margin-right: 2px;
+}
+
+.checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #fafbfc;
+    border-radius: 8px;
+}
+
+.checkbox-field input {
+    width: 18px;
+    height: 18px;
+    accent-color: #6563d9;
+}
+
+.checkbox-field span {
+    font-size: 13px;
+    color: #36384b;
+}
+
+/* Responsive for Articles */
+@media (max-width: 1024px) {
+    .articles-table .table-header,
+    .articles-table .table-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .articles-table .table-header > div:not(:first-child),
+    .articles-table .table-row > div:not(:first-child) {
+        display: none;
+    }
+
+    .article-form-modal {
+        max-width: 100% !important;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .articles-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .articles-toolbar .search-wrapper,
+    .articles-toolbar .filter-select {
+        width: 100%;
+        max-width: none;
+    }
+
+    .form-section {
+        padding: 16px;
+    }
+}
+
+/* Dark mode for Articles */
+.dark .articles-toolbar,
+.dark .articles-table .table-header,
+.dark .articles-table .table-row {
+    background: #1e1e1e;
+    border-color: #2a2a2a;
+}
+
+.dark .articles-table .table-row:nth-child(even) {
+    background: #1a1a1a;
+}
+
+.dark .articles-table .col-title strong {
+    color: #e5e5e5;
+}
+
+.dark .articles-table .col-title small {
+    color: #888;
+}
+
+.dark .articles-table .status.ok {
+    background: #1a3a2e;
+    color: #4ade80;
+}
+
+.dark .articles-table .status.warning {
+    background: #3a2f1a;
+    color: #fbbf24;
+}
+
+.dark .articles-table .badge.featured {
+    background: #3a2f1a;
+    color: #fbbf24;
+}
+
+.dark .articles-table .badge.normal {
+    color: #888;
+}
+
+.dark .multi-select {
+    background: #1e1e1e;
+    border-color: #2a2a2a;
+    color: #e5e5e5;
+}
+
+.dark .multi-select:hover {
+    border-color: #3a3a4a;
+}
+
+.dark .multi-select.open {
+    border-color: #6563d9;
+}
+
+.dark .multi-select-tag {
+    background: #2a2a3a;
+    color: #a5a3ff;
+}
+
+.dark .multi-select-tag .tag-remove {
+    color: #a5a3ff;
+}
+
+.dark .multi-select-tag .tag-remove:hover {
+    background: rgba(101, 99, 217, 0.2);
+}
+
+.dark .multi-select-search {
+    color: #e5e5e5;
+}
+
+.dark .multi-select-dropdown {
+    background: #1e1e1e;
+    border-color: #2a2a2a;
+}
+
+.dark .multi-select-option {
+    color: #e5e5e5;
+}
+
+.dark .multi-select-option:hover,
+.dark .multi-select-option.selected {
+    background: #2a2a3a;
+    color: #a5a3ff;
+}
+
+.dark .multi-select-empty {
+    color: #888;
+}
+
+.dark .form-section {
+    border-color: #2a2a2a;
+}
+
+.dark .form-section h4 {
+    border-color: #2a2a2a;
+    color: #e5e5e5;
+}
+
+.dark .content-editor {
+    background: #1e1e1e;
+    border-color: #2a2a2a;
+    color: #e5e5e5;
+}
+
+.dark .checkbox-field {
+    background: #1e1e1e;
+}
+
+.dark .checkbox-field span {
+    color: #e5e5e5;
 }
 </style>
-```
-
-### بعد از جایگزینی
-
-در ترمینال:
-
-```powershell
-npm run dev
-```
-
-اگر Vite از قبل در حال اجراست، اول:
-
-```powershell
-Ctrl + C
-```
-
-و دوباره:
-
-```powershell
-npm run dev
-```
-
-بعد برو:
-
-```text
-http://127.0.0.1:8000/admin
-```
-
-### یک نکته مهم
-
-در این مرحله اگر صفحه باز شد، **هنوز هیچ محصولی ایجاد نکن** تا اول خود پنل را بررسی کنیم.
-
-باید بتوانی:
-
-**محصولات → افزودن محصول**
-
-را بزنی و فرم را ببینی.
-
-همچنین قسمت ویژگی‌ها باید با انتخاب دسته‌بندی، ویژگی‌های مربوط به همان دسته را نشان دهد؛ این همان معماری‌ای است که برای مثال باعث می‌شود:
-
-* لباس → سایز، رنگ، جنس
-* کفش → سایز کفش، رنگ، جنس
-* عینک → نوع عینک، جنس فریم، رنگ
-* کیف → نوع کیف، جنس، رنگ
-
-از هم تفکیک شوند.
 
 اگر این نسخه **بدون خطا بالا آمد**، مرحله بعدی را روی همین کد می‌سازیم: **ویرایش محصول + API `show/update`**؛ بعد می‌رویم سراغ مدیریت کامل دسته‌بندی و Attributeها.
