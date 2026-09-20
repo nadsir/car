@@ -248,7 +248,7 @@ onUnmounted(() => {
         <main>
 
             <!-- HERO -->
-            <section class="relative min-h-[560px] pt-12 pb-20 overflow-hidden">
+            <section class="relative min-h-[480px] sm:min-h-[560px] pt-10 sm:pt-12 pb-16 sm:pb-20 overflow-hidden">
                 <div class="absolute top-1/4 -right-40 w-96 h-96 bg-brand-accent/15 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="absolute bottom-10 -left-40 w-96 h-96 bg-cyan-500/8 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -319,11 +319,11 @@ onUnmounted(() => {
                                     <div>
                                         <label class="block text-[11px] font-semibold text-slate-500 mb-1">۱. کمپانی سازنده</label>
                                         <div class="relative">
-                                            <select v-model="vfBrand" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer" required @change="onVfBrandChange">
+                                            <select v-model="vfBrand" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer min-h-[44px]" required @change="onVfBrandChange">
                                                 <option value="">{{ vfBrandsLoading ? 'بارگذاری...' : 'انتخاب کمپانی' }}</option>
                                                 <option v-for="b in vehicleBrands" :key="b.id" :value="b.id">{{ b.name }}</option>
                                             </select>
-                                            <i class="fa-solid fa-chevron-down absolute left-3 top-3 text-[10px] text-slate-500 pointer-events-none"></i>
+                                            <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
                                         </div>
                                     </div>
 
@@ -331,21 +331,21 @@ onUnmounted(() => {
                                         <div>
                                             <label class="block text-[11px] font-semibold text-slate-500 mb-1">۲. مدل</label>
                                             <div class="relative">
-                                                <select v-model="vfModel" :disabled="!vfBrand || vfModelsLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" required @change="onVfModelChange">
+                                                <select v-model="vfModel" :disabled="!vfBrand || vfModelsLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]" required @change="onVfModelChange">
                                                     <option value="">{{ vfModelsLoading ? 'بارگذاری...' : (vfBrand ? 'انتخاب مدل' : '—') }}</option>
                                                     <option v-for="m in vehicleModels" :key="m.id" :value="m.id">{{ m.name }}</option>
                                                 </select>
-                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3 text-[10px] text-slate-500 pointer-events-none"></i>
+                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
                                             </div>
                                         </div>
                                         <div>
                                             <label class="block text-[11px] font-semibold text-slate-500 mb-1">۳. نسل</label>
                                             <div class="relative">
-                                                <select v-model="vfGeneration" :disabled="!vfModel || vfGenerationsLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" @change="onVfGenerationChange">
+                                                <select v-model="vfGeneration" :disabled="!vfModel || vfGenerationsLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]" @change="onVfGenerationChange">
                                                     <option value="">{{ vfGenerationsLoading ? 'بارگذاری...' : (vfModel ? 'انتخاب نسل' : '—') }}</option>
                                                     <option v-for="g in vehicleGenerations" :key="g.id" :value="g.id">{{ g.name }}{{ g.year_start ? ` (${g.year_start})` : '' }}</option>
                                                 </select>
-                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3 text-[10px] text-slate-500 pointer-events-none"></i>
+                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
                                             </div>
                                         </div>
                                     </div>
@@ -354,26 +354,26 @@ onUnmounted(() => {
                                         <div>
                                             <label class="block text-[11px] font-semibold text-slate-500 mb-1">۴. تیپ</label>
                                             <div class="relative">
-                                                <select v-model="vfTrim" :disabled="!vfGeneration || vfTrimsLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" @change="onVfTrimChange">
+                                                <select v-model="vfTrim" :disabled="!vfGeneration || vfTrimsLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]" @change="onVfTrimChange">
                                                     <option value="">{{ vfTrimsLoading ? 'بارگذاری...' : (vfGeneration ? 'انتخاب تیپ' : '—') }}</option>
                                                     <option v-for="t in vehicleTrims" :key="t.id" :value="t.id">{{ t.name }}</option>
                                                 </select>
-                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3 text-[10px] text-slate-500 pointer-events-none"></i>
+                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
                                             </div>
                                         </div>
                                         <div>
                                             <label class="block text-[11px] font-semibold text-slate-500 mb-1">۵. موتور</label>
                                             <div class="relative">
-                                                <select v-model="vfEngine" :disabled="!vfTrim || vfEnginesLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                                                <select v-model="vfEngine" :disabled="!vfTrim || vfEnginesLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]" @change="onVfEngineChange">
                                                     <option value="">{{ vfEnginesLoading ? 'بارگذاری...' : (vfTrim ? 'انتخاب موتور' : '—') }}</option>
                                                     <option v-for="e in vehicleEngines" :key="e.id" :value="e.id">{{ e.name }}</option>
                                                 </select>
-                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3 text-[10px] text-slate-500 pointer-events-none"></i>
+                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <button type="submit" class="w-full py-3 rounded-lg bg-brand-accent hover:bg-brand-hover text-ink font-bold text-sm shadow-glow-yellow flex items-center justify-center gap-2 transition-all active:scale-[.98]">
+                                    <button type="submit" class="w-full py-3.5 rounded-lg bg-brand-accent hover:bg-brand-hover text-ink font-bold text-sm shadow-glow-yellow flex items-center justify-center gap-2 transition-all active:scale-[.98] min-h-[48px]">
                                         <i class="fa-solid fa-magnifying-glass-chart"></i>
                                         نمایش قطعات سازگار
                                     </button>

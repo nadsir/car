@@ -51,7 +51,7 @@ class PaymentServiceTest extends TestCase
         ], $overrides));
     }
 
-    private function registerAttempt(Order $order, string $authority, int $amount = null): PaymentAttempt
+    private function registerAttempt(Order $order, string $authority, ?int $amount = null): PaymentAttempt
     {
         return $order->paymentAttempts()->create([
             'gateway'   => 'FakePaymentGateway',
@@ -307,6 +307,8 @@ class PaymentServiceTest extends TestCase
             'unit_price' => $product->price, 'subtotal' => '2997.00',
         ]);
 
+        // Order total = 500.00 Toman → 5000 Rial
+        // Register attempt with wrong amount (999 instead of 5000)
         $this->registerAttempt($order, 'auth-mismatch', amount: 999);
 
         $this->expectException(\LogicException::class);

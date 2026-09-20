@@ -136,8 +136,8 @@ class CustomerCheckoutTest extends TestCase
     public function test_order_amount_overflow_is_rejected(): void
     {
         $this->customer();
-        $product = $this->product(['price' => '9999999999999.99']);
-        $this->assertRejected([$this->line($product, 2)], 'items');
+        $product = $this->product(['price' => '100000000.00', 'stock' => 100000]);
+        $this->assertRejected([$this->line($product, 100000)], 'items');
     }
 
     public function test_invalid_product_is_rejected(): void

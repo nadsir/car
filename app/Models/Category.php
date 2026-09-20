@@ -80,6 +80,7 @@ class Category extends Model
         )
         ->using(CategoryAttribute::class)
         ->withPivot([
+            'is_enabled',
             'is_required',
             'is_filterable',
             'is_variant_axis',

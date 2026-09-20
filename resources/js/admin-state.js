@@ -13,6 +13,11 @@ export const editingProductId = ref(null);
 export const adminUser = ref(null);
 export const isAuthenticated = ref(false);
 
+export const productSearch = ref('');
+export const productPage = ref(1);
+export const productTotalPages = ref(1);
+export const productTotal = ref(0);
+
 const adminTokenStorageKey = 'car.admin_token';
 
 function applyAdminToken(token) {
@@ -94,6 +99,26 @@ export function resetForm() {
     editingProductId.value = null;
 }
 
+export async function loadAdminProducts() {
+    const params = {
+        page: productPage.value,
+    };
+
+    if (productSearch.value) {
+        params.search = productSearch.value;
+    }
+
+    const response = await axios.get('/api/admin/products', { params });
+
+    products.value = response.data.data || [];
+    productTotalPages.value = response.data.last_page || 1;
+    productTotal.value = response.data.total || 0;
+
+    if (productPage.value > productTotalPages.value) {
+        productPage.value = productTotalPages.value;
+    }
+}
+
 export async function loadProducts() {
     const response = await axios.get('/api/products');
 
@@ -124,7 +149,7 @@ export async function load() {
 
     try {
         await Promise.all([
-            loadProducts(),
+            loadAdminProducts(),
             loadMeta(),
             loadAdminCategories(),
         ]);
@@ -244,14 +269,22 @@ export async function save() {
     saving.value = true;
 
     try {
+        const { images, ...payload } = form.value;
+
         const response = await axios.post(
             '/api/admin/products',
-            form.value
+            payload
         );
 
-        await loadProducts();
+        await loadAdminProducts();
 
         return response.data;
+    } catch (error) {
+        const errors = error.response?.data?.errors;
+        const message = errors
+            ? Object.values(errors).flat().join(' ')
+            : error.response?.data?.message || 'ذخیره محصول انجام نشد.';
+        throw new Error(message);
     } finally {
         saving.value = false;
     }
@@ -272,6 +305,22 @@ export async function loadProduct(id) {
         );
 
         const product = response.data;
+
+        const productCategoryIds = (product.categories || [])
+            .map(category => category.id);
+
+        const categoryAttributeSets = productCategoryIds
+            .map(categoryId => categoryAttributes.value[categoryId] || []);
+
+        const effectiveAttributeIds = categoryAttributeSets.length
+            ? categoryAttributeSets[0]
+                .filter(attribute =>
+                    categoryAttributeSets.slice(1).every(set =>
+                        set.some(item => item.id === attribute.id)
+                    )
+                )
+                .map(attribute => attribute.id)
+            : [];
 
         editingProductId.value = product.id;
 
@@ -311,6 +360,9 @@ export async function loadProduct(id) {
 
             custom_attribute_values:
                 (product.custom_attribute_values || [])
+                    .filter(value =>
+                        effectiveAttributeIds.includes(value.attribute_id)
+                    )
                     .map(value => ({
                         attribute_id: value.attribute_id,
                         value: value.value_type === 'number'
@@ -368,21 +420,37 @@ export async function loadProduct(id) {
 
 export async function updateProduct() {
     if (!editingProductId.value) {
+        console.log('[PRODUCT SAVE] updateProduct: no editingProductId');
         return;
     }
+
+    console.log('[PRODUCT SAVE] updateProduct called', editingProductId.value);
 
     saving.value = true;
 
     try {
+        const { images, ...payload } = form.value;
+
+        console.log('[PRODUCT SAVE] sending request', { url: `/api/admin/products/${editingProductId.value}`, payload });
+
         const response = await axios.put(
             `/api/admin/products/${editingProductId.value}`,
-            form.value
+            payload
         );
 
-        await loadProducts();
+        console.log('[PRODUCT SAVE] response', response.status, response.data);
+
+        await loadAdminProducts();
 
         return response.data;
 
+    } catch (error) {
+        console.error('[PRODUCT SAVE] error', error);
+        const errors = error.response?.data?.errors;
+        const message = errors
+            ? Object.values(errors).flat().join(' ')
+            : error.response?.data?.message || 'بروزرسانی محصول انجام نشد.';
+        throw new Error(message);
     } finally {
         saving.value = false;
     }
@@ -502,7 +570,7 @@ export async function removeProduct(id) {
         `/api/admin/products/${id}`
     );
 
-    await loadProducts();
+    await loadAdminProducts();
 }
 
 /*
@@ -657,4 +725,230 @@ export async function attachProductCompatibility(productId, engineIds) {
 
 export async function detachProductCompatibility(productId, engineId) {
     await axios.delete(`/api/admin/products/${productId}/vehicle-compat/${engineId}`);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Orders (Admin)
+|--------------------------------------------------------------------------
+*/
+
+export const adminOrders = ref([]);
+export const adminOrder = ref(null);
+export const adminOrderLoading = ref(false);
+export const adminOrderError = ref('');
+export const adminOrderSuccess = ref('');
+
+export const adminOrderSearch = ref('');
+export const adminOrderStatusFilter = ref('');
+export const adminOrderPaymentFilter = ref('');
+export const adminOrderPage = ref(1);
+export const adminOrderTotalPages = ref(1);
+export const adminOrderTotal = ref(0);
+
+export async function loadAdminOrders() {
+    adminOrderLoading.value = true;
+    adminOrderError.value = '';
+    adminOrderSuccess.value = '';
+
+    try {
+        const params = {
+            page: adminOrderPage.value,
+        };
+
+        if (adminOrderSearch.value) {
+            params.search = adminOrderSearch.value;
+        }
+
+        if (adminOrderStatusFilter.value) {
+            params.status = adminOrderStatusFilter.value;
+        }
+
+        if (adminOrderPaymentFilter.value) {
+            params.payment_status = adminOrderPaymentFilter.value;
+        }
+
+        const response = await axios.get('/api/admin/orders', { params });
+
+        adminOrders.value = response.data.data || [];
+        adminOrderTotalPages.value = response.data.last_page || 1;
+        adminOrderTotal.value = response.data.total || 0;
+
+        if (adminOrderPage.value > adminOrderTotalPages.value) {
+            adminOrderPage.value = adminOrderTotalPages.value;
+        }
+    } catch (error) {
+        adminOrderError.value = error.response?.data?.message || 'دریافت سفارش‌ها انجام نشد.';
+    } finally {
+        adminOrderLoading.value = false;
+    }
+}
+
+export async function loadAdminOrder(id) {
+    adminOrderLoading.value = true;
+    adminOrderError.value = '';
+    adminOrder.value = null;
+
+    try {
+        const response = await axios.get(`/api/admin/orders/${id}`);
+        adminOrder.value = response.data.order || null;
+        return adminOrder.value;
+    } catch (error) {
+        adminOrderError.value = error.response?.data?.message || 'دریافت سفارش انجام نشد.';
+    } finally {
+        adminOrderLoading.value = false;
+    }
+}
+
+export async function updateAdminOrderStatus(id, status, cancelledReason = null) {
+    adminOrderError.value = '';
+    adminOrderSuccess.value = '';
+
+    try {
+        const response = await axios.patch(`/api/admin/orders/${id}/status`, {
+            status,
+            cancelled_reason: cancelledReason,
+        });
+
+        adminOrderSuccess.value = 'وضعیت سفارش با موفقیت تغییر یافت.';
+        return response.data;
+    } catch (error) {
+        adminOrderError.value = error.response?.data?.errors?.status?.[0] || error.response?.data?.message || 'تغییر وضعیت انجام نشد.';
+        throw error;
+    }
+}
+
+export function getAllowedTransitions(currentStatus) {
+    const transitions = {
+        pending: ['confirmed', 'cancelled'],
+        confirmed: ['processing', 'cancelled'],
+        processing: ['shipped'],
+        shipped: ['delivered'],
+        delivered: [],
+        cancelled: [],
+    };
+    return transitions[currentStatus] || [];
+}
+
+export function getStatusLabel(status) {
+    const labels = {
+        pending: 'در انتظار پرداخت',
+        confirmed: 'تأیید شده',
+        processing: 'در حال پردازش',
+        shipped: 'ارسال شده',
+        delivered: 'تحویل شده',
+        cancelled: 'لغو شده',
+    };
+    return labels[status] || status;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Notification (Admin)
+|--------------------------------------------------------------------------
+*/
+
+export const adminNotification = ref({
+    visible: false,
+    type: 'success',
+    title: '',
+    message: '',
+});
+
+export function showAdminNotification(type, title, message) {
+    adminNotification.value = {
+        visible: true,
+        type,
+        title,
+        message,
+    };
+}
+
+export function hideAdminNotification() {
+    adminNotification.value.visible = false;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Users (Admin)
+|--------------------------------------------------------------------------
+*/
+
+export const adminUsers = ref([]);
+export const adminUserDetail = ref(null);
+export const adminUserLoading = ref(false);
+export const adminUserError = ref('');
+export const adminUserSuccess = ref('');
+
+export const adminUserSearch = ref('');
+export const adminUserStatusFilter = ref('');
+export const adminUserPage = ref(1);
+export const adminUserTotalPages = ref(1);
+export const adminUserTotal = ref(0);
+
+export async function loadAdminUsers() {
+    adminUserLoading.value = true;
+    adminUserError.value = '';
+    adminUserSuccess.value = '';
+
+    try {
+        const params = {
+            page: adminUserPage.value,
+        };
+
+        if (adminUserSearch.value) {
+            params.search = adminUserSearch.value;
+        }
+
+        if (adminUserStatusFilter.value) {
+            params.status = adminUserStatusFilter.value;
+        }
+
+        const response = await axios.get('/api/admin/users', { params });
+
+        adminUsers.value = response.data.data || [];
+        adminUserTotalPages.value = response.data.last_page || 1;
+        adminUserTotal.value = response.data.total || 0;
+
+        if (adminUserPage.value > adminUserTotalPages.value) {
+            adminUserPage.value = adminUserTotalPages.value;
+        }
+    } catch (error) {
+        adminUserError.value = error.response?.data?.message || 'دریافت کاربران انجام نشد.';
+    } finally {
+        adminUserLoading.value = false;
+    }
+}
+
+export async function loadAdminUser(id) {
+    adminUserLoading.value = true;
+    adminUserError.value = '';
+    adminUserDetail.value = null;
+
+    try {
+        const response = await axios.get(`/api/admin/users/${id}`);
+        adminUserDetail.value = response.data.user || null;
+        return adminUserDetail.value;
+    } catch (error) {
+        adminUserError.value = error.response?.data?.message || 'دریافت کاربر انجام نشد.';
+    } finally {
+        adminUserLoading.value = false;
+    }
+}
+
+export async function updateAdminUserStatus(id, isActive) {
+    adminUserError.value = '';
+    adminUserSuccess.value = '';
+
+    try {
+        const response = await axios.patch(`/api/admin/users/${id}/status`, {
+            is_active: isActive,
+        });
+
+        adminUserSuccess.value = 'وضعیت کاربر با موفقیت تغییر یافت.';
+        return response.data;
+    } catch (error) {
+        adminUserError.value = error.response?.data?.errors?.is_active?.[0] || error.response?.data?.message || 'تغییر وضعیت انجام نشد.';
+        throw error;
+    }
 }

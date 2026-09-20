@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AdminAuthController;
 use App\Http\Controllers\Api\AdminAttributeController;
 use App\Http\Controllers\Api\AdminProductController;
 use App\Http\Controllers\Api\AdminVehicleController;
+use App\Http\Controllers\Api\VehicleController;
 use App\Http\Controllers\Api\FilteredProductController;
 use App\Http\Controllers\Api\ProductDetailController;
 use App\Http\Controllers\Api\AdminProductImageController;
@@ -16,7 +17,9 @@ use App\Http\Controllers\Api\CustomerAuthController;
 use App\Http\Controllers\Api\CustomerCheckoutController;
 use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\CustomerWishlistController;
-use App\Http\Controllers\Api\VehicleController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\AdminOrderController;
+use App\Http\Controllers\Api\AdminUserController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -43,6 +46,8 @@ Route::middleware('auth:sanctum')->prefix('customer')->group(function () {
     Route::post('/wishlist', [CustomerWishlistController::class, 'store']);
     Route::delete('/wishlist/{product}', [CustomerWishlistController::class, 'destroy'])->whereNumber('product');
     Route::get('/wishlist/check/{product}', [CustomerWishlistController::class, 'check'])->whereNumber('product');
+    Route::post('/orders/{order}/pay', [PaymentController::class, 'initiate'])->whereNumber('order');
+    Route::get('/orders/{order}/payment-status', [PaymentController::class, 'status'])->whereNumber('order');
 });
 
 Route::get('/categories', [CategoryController::class, 'index']);
@@ -67,6 +72,9 @@ Route::post('/admin/login', [AdminAuthController::class, 'login'])
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     Route::get('/me', [AdminAuthController::class, 'me']);
     Route::post('/logout', [AdminAuthController::class, 'logout']);
+    Route::get('/orders', [AdminOrderController::class, 'index']);
+    Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->whereNumber('order');
+    Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->whereNumber('order');
     Route::get('/categories', [AdminCategoryController::class, 'index']);
     Route::post('/categories', [AdminCategoryController::class, 'store']);
     Route::get('/categories/{category}', [AdminCategoryController::class, 'show']);
@@ -81,6 +89,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/attributes/{attribute}/values', [AdminAttributeController::class, 'storeValue']);
     Route::put('/attributes/{attribute}/values/{value}', [AdminAttributeController::class, 'updateValue']);
     Route::delete('/attributes/{attribute}/values/{value}', [AdminAttributeController::class, 'destroyValue']);
+    Route::get('/products', [AdminProductController::class, 'index']);
     Route::get('/products/meta', [AdminProductController::class, 'meta']);
     Route::get('/products/{product}', [AdminProductController::class, 'show']);
     Route::post('/products', [AdminProductController::class, 'store']);
@@ -106,6 +115,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
         '/products/{product}/images/{image}',
         [AdminProductImageController::class, 'destroy']
     );
+
+    // ── Users ───────────────────────────────────────────────────────
+    Route::get('/users', [AdminUserController::class, 'index']);
+    Route::get('/users/{user}', [AdminUserController::class, 'show'])->whereNumber('user');
+    Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])->whereNumber('user');
 
     // ── Vehicle hierarchy ──────────────────────────────────────────
     Route::get('/vehicles/brands', [AdminVehicleController::class, 'indexBrands']);

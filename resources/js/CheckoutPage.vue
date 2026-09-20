@@ -104,15 +104,15 @@ async function submitOrder() {
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div v-for="field in fields" :key="field.key">
                             <label :for="field.key" class="block text-xs text-slate-600 mb-2">{{ field.label }}</label>
-                            <input :id="field.key" v-model="form[field.key]" :type="field.type" :autocomplete="field.autocomplete" :maxlength="field.max" required :aria-invalid="!!validationErrors[field.key]" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-brand-accent focus:outline-none" />
+                            <input :id="field.key" v-model="form[field.key]" :type="field.type" :autocomplete="field.autocomplete" :maxlength="field.max" required :aria-invalid="!!validationErrors[field.key]" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-brand-accent focus:outline-none min-h-[44px]" />
                         </div>
                         <div class="sm:col-span-2">
                             <label for="shipping_address" class="block text-xs text-slate-600 mb-2">آدرس کامل</label>
-                            <textarea id="shipping_address" v-model="form.shipping_address" required maxlength="2000" autocomplete="street-address" rows="3" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"></textarea>
+                            <textarea id="shipping_address" v-model="form.shipping_address" required maxlength="2000" autocomplete="street-address" rows="3" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm min-h-[44px]"></textarea>
                         </div>
                         <div class="sm:col-span-2">
                             <label for="notes" class="block text-xs text-slate-600 mb-2">توضیحات (اختیاری)</label>
-                            <textarea id="notes" v-model="form.notes" maxlength="2000" rows="2" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"></textarea>
+                            <textarea id="notes" v-model="form.notes" maxlength="2000" rows="2" class="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm min-h-[44px]"></textarea>
                         </div>
                     </div>
                 </fieldset>
@@ -135,7 +135,7 @@ async function submitOrder() {
                         <div class="flex justify-between font-bold"><dt>جمع کل</dt><dd>{{ formatPrice(cartTotal) }} تومان</dd></div>
                     </dl>
                     <p class="mb-4 text-xs text-slate-500">قیمت و موجودی هنگام ثبت سفارش بررسی می‌شوند؛ مبلغ نهایی در نتیجه سفارش نمایش داده می‌شود.</p>
-                    <button type="submit" :disabled="submitting || !items.length" class="w-full rounded-lg bg-brand-accent text-dark-900 py-3 text-sm font-bold hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed">{{ submitting ? 'در حال ثبت سفارش…' : 'ثبت سفارش' }}</button>
+                    <button type="submit" :disabled="submitting || !items.length" class="w-full rounded-lg bg-brand-accent text-dark-900 py-3.5 text-sm font-bold hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]">{{ submitting ? 'در حال ثبت سفارش…' : 'ثبت سفارش' }}</button>
                     <a href="/cart" class="block mt-3 text-center text-xs text-slate-500">بازگشت به سبد خرید</a>
                 </section>
             </form>

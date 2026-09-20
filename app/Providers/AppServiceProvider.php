@@ -21,7 +21,13 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(
             \App\Contracts\PaymentGatewayInterface::class,
-            \App\Services\Payment\FakePaymentGateway::class,
+            function () {
+                if (config('services.aghayepardakht.pin')) {
+                    return new \App\Services\Payment\AghayePardakhtGateway();
+                }
+
+                return new \App\Services\Payment\FakePaymentGateway();
+            },
         );
     }
 

@@ -48,14 +48,14 @@ class CustomerCheckoutController extends Controller
             $maxAmount = 999999999999999; // DECIMAL(15, 2), in hundredths.
             foreach ($lines as $line) {
                 $field = 'items.'.$line['index'];
-                $product = Product::query()->find($line['product_id']);
+                $product = Product::query()->where('id', $line['product_id'])->lockForUpdate()->first();
                 if (!$product || !$product->is_active) {
                     throw ValidationException::withMessages([$field.'.product_id' => 'محصول موجود یا فعال نیست.']);
                 }
 
                 $variant = null;
                 if ($line['variant_id'] !== null) {
-                    $variant = $product->variants()->with('attributeValues.attribute')->find($line['variant_id']);
+                    $variant = $product->variants()->with('attributeValues.attribute')->where('id', $line['variant_id'])->lockForUpdate()->first();
                     if (!$variant || !$variant->is_active) {
                         throw ValidationException::withMessages([$field.'.variant_id' => 'تنوع انتخاب‌شده معتبر یا فعال نیست.']);
                     }
@@ -73,7 +73,7 @@ class CustomerCheckoutController extends Controller
                 }
                 [$whole, $fraction] = array_pad(explode('.', $price, 2), 2, '00');
                 $unitPrice = (int) $whole * 100 + (int) str_pad($fraction, 2, '0');
-                if ($unitPrice > intdiv($maxAmount - $total, $line['quantity'])) {
+                if ($unitPrice * $line['quantity'] > $maxAmount - $total) {
                     throw ValidationException::withMessages(['items' => 'مبلغ سفارش از سقف مجاز بیشتر است.']);
                 }
                 $subtotal = $unitPrice * $line['quantity'];
