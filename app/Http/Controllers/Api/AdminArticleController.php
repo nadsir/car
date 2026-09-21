@@ -137,7 +137,7 @@ class AdminArticleController extends Controller
                 Rule::unique('articles', 'slug')->ignore($articleId),
             ],
             'excerpt' => ['nullable', 'string'],
-            'content' => ['nullable', 'string'],
+            'content' => ['required', 'string'],
             'featured_image' => ['nullable', 'string', 'max:2048'],
             'status' => ['sometimes', 'string', Rule::in(['draft', 'published'])],
             'published_at' => ['nullable', 'date'],
