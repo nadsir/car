@@ -14,6 +14,8 @@ import LoginPage from './LoginPage.vue';
 import RegisterPage from './RegisterPage.vue';
 import AccountPage from './AccountPage.vue';
 import WishlistPage from './WishlistPage.vue';
+import ArticlesPage from './ArticlesPage.vue';
+import ArticleDetailPage from './ArticleDetailPage.vue';
 
 function resolveApp() {
     const path = location.pathname;
@@ -29,6 +31,8 @@ function resolveApp() {
     if (/^\/orders\/\d+\/?$/.test(path)) return OrderDetailPage;
     if (path === '/wishlist' || path === '/wishlist/') return WishlistPage;
     if (/^\/products\/\d+/.test(path)) return ProductDetail;
+    if (/^\/articles\/[^/]+\/?$/.test(path)) return ArticleDetailPage;
+    if (path === '/articles' || path === '/articles/') return ArticlesPage;
     if (path === '/' || path === '') return Homepage;
 
     return App;

@@ -182,6 +182,41 @@ async function loadFeaturedProducts() {
     featuredLoading.value = false;
 }
 
+/* ── Articles ─────────────────────────────────────────────── */
+const articles = ref([]);
+const articlesLoading = ref(false);
+const articlesError = ref('');
+
+const latestArticles = computed(() => articles.value.slice(0, 4));
+const featuredArticle = computed(() => latestArticles.value[0] || null);
+const articleGrid = computed(() => latestArticles.value.slice(1, 4));
+
+function articleImage(a) {
+    if (!a.featured_image) return '';
+    if (/^https?:\/\//i.test(a.featured_image)) return a.featured_image;
+    return `/storage/${a.featured_image.replace(/^\/?storage\//, '')}`;
+}
+
+function formatArticleDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
+}
+
+async function loadArticles() {
+    articlesLoading.value = true;
+    articlesError.value = '';
+    try {
+        const { data } = await axios.get('/api/articles');
+        articles.value = data.data || [];
+    } catch {
+        articles.value = [];
+        articlesError.value = 'دریافت مقالات ناموفق بود.';
+    }
+    articlesLoading.value = false;
+}
+
 /* ── Authenticity ─────────────────────────────────────────── */
 const authCode = ref('');
 function onAuthSubmit() {
@@ -210,7 +245,7 @@ function onNewsletterSubmit() {
 /* ── Lifecycle ────────────────────────────────────────────── */
 onMounted(async () => {
     window.addEventListener('toast', onToastEvent);
-    await Promise.all([loadVehicleBrands(), loadCategories(), loadFeaturedProducts()]);
+    await Promise.all([loadVehicleBrands(), loadCategories(), loadFeaturedProducts(), loadArticles()]);
 });
 
 onUnmounted(() => {
@@ -530,6 +565,80 @@ onUnmounted(() => {
                                 </div>
                             </div>
                         </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ARTICLES -->
+            <section id="articles" class="py-14">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+                        <div>
+                            <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-brand-accent/10 text-brand-accent border border-brand-accent/20 inline-block mb-2">
+                                <i class="fa-solid fa-book-open ml-1.5"></i> مجله توربوپارت
+                            </span>
+                            <h2 class="text-2xl sm:text-3xl font-black text-ink">مقالات، راهنمای انتخاب قطعه</h2>
+                            <p class="text-xs text-slate-500 mt-2">راهنمای تخصصی انتخاب و نگهداری قطعات خودرو</p>
+                        </div>
+                        <a href="/articles" class="inline-flex items-center gap-1.5 text-sm font-bold text-brand-accent hover:text-brand-hover transition-colors">
+                            مشاهده همه مقالات <i class="fa-solid fa-arrow-left text-xs"></i>
+                        </a>
+                    </div>
+
+                    <div v-if="articlesLoading" class="space-y-4">
+                        <div class="h-44 sm:h-48 rounded-2xl bg-white border border-gray-200 animate-pulse"></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div v-for="i in 3" :key="i" class="h-52 rounded-xl bg-white border border-gray-200 animate-pulse"></div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="articlesError" class="text-center py-12">
+                        <i class="fa-solid fa-circle-exclamation text-3xl text-slate-500 mb-3"></i>
+                        <p class="text-slate-500 text-xs">{{ articlesError }}</p>
+                    </div>
+
+                    <div v-else-if="articles.length" class="space-y-4">
+                        <!-- Featured -->
+                        <a v-if="featuredArticle" :href="`/articles/${featuredArticle.slug}`" class="group grid sm:grid-cols-2 gap-0 overflow-hidden rounded-2xl bg-white border border-gray-200 hover:border-brand-accent/40 transition-all">
+                            <div class="relative bg-gradient-to-br from-brand-accent/25 via-amber-100 to-sand min-h-[180px] sm:min-h-0 overflow-hidden">
+                                <img v-if="articleImage(featuredArticle)" :src="articleImage(featuredArticle)" :alt="featuredArticle.title" class="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" @error="onImgError($event)" loading="lazy" />
+                                <span class="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-brand-accent text-ink text-[10px] font-bold shadow">
+                                    <i class="fa-solid fa-star text-[9px]"></i> منتخب سردبیر
+                                </span>
+                            </div>
+                            <div class="p-5 sm:p-6 flex flex-col justify-center">
+                                <div class="mb-2.5 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
+                                    <span v-if="featuredArticle.categories?.[0]" class="px-2 py-0.5 rounded-full bg-brand-accent/10 text-brand-accent border border-brand-accent/20 font-bold">
+                                        {{ featuredArticle.categories[0].name }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-1"><i class="fa-solid fa-calendar-day"></i> {{ formatArticleDate(featuredArticle.published_at) }}</span>
+                                </div>
+                                <h3 class="font-black text-base sm:text-lg text-ink leading-relaxed group-hover:text-brand-accent transition-colors line-clamp-2">{{ featuredArticle.title }}</h3>
+                                <p v-if="featuredArticle.excerpt" class="mt-2 text-xs text-slate-500 leading-relaxed line-clamp-2">{{ featuredArticle.excerpt }}</p>
+                                <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-accent mt-4">
+                                    ادامه مطلب <i class="fa-solid fa-arrow-left text-[10px] group-hover:-translate-x-0.5 transition-transform"></i>
+                                </span>
+                            </div>
+                        </a>
+
+                        <!-- Grid -->
+                        <div v-if="articleGrid.length" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <a v-for="article in articleGrid" :key="article.id" :href="`/articles/${article.slug}`" class="group rounded-xl bg-white border border-gray-200 hover:border-brand-accent/40 overflow-hidden transition-all flex flex-col">
+                                <div class="relative aspect-[16/10] bg-gradient-to-br from-brand-accent/20 via-amber-100 to-sand overflow-hidden">
+                                    <img v-if="articleImage(article)" :src="articleImage(article)" :alt="article.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" @error="onImgError($event)" loading="lazy" />
+                                </div>
+                                <div class="p-4 flex flex-col flex-1">
+                                    <div class="mb-2 flex items-center gap-1.5 text-[10px] text-slate-500">
+                                        <span v-if="article.categories?.[0]" class="px-2 py-0.5 rounded-full bg-brand-accent/10 text-brand-accent border border-brand-accent/20 font-bold">{{ article.categories[0].name }}</span>
+                                        <span class="inline-flex items-center gap-1"><i class="fa-solid fa-calendar-day"></i> {{ formatArticleDate(article.published_at) }}</span>
+                                    </div>
+                                    <h3 class="font-bold text-sm text-ink leading-relaxed group-hover:text-brand-accent transition-colors line-clamp-2 flex-1">{{ article.title }}</h3>
+                                    <span class="inline-flex items-center gap-1 text-[10px] text-brand-accent font-bold mt-3">
+                                        ادامه مطلب <i class="fa-solid fa-arrow-left text-[9px]"></i>
+                                    </span>
+                                </div>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </section>

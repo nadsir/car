@@ -280,6 +280,11 @@ onUnmounted(() => {
                         فروشگاه
                     </a>
 
+                    <a href="/articles" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-ink hover:bg-gray-100 transition-colors">
+                        <i class="fa-solid fa-book-open text-[11px]"></i>
+                        مقالات
+                    </a>
+
                     <a href="/wishlist" aria-label="علاقه‌مندی‌ها" class="relative p-2 rounded-lg text-slate-600 hover:text-ink hover:bg-gray-100 transition-colors">
                         <span class="inline-block text-xl leading-none" aria-hidden="true">♡</span>
                         <span v-if="isLoggedIn && wishlistCount > 0" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-0.5 bg-brand-accent text-ink text-[10px] font-bold rounded-full flex items-center justify-center">{{ toPersianNumber(wishlistCount) }}</span>
@@ -393,6 +398,9 @@ onUnmounted(() => {
                             </a>
                             <a href="/store?sort=newest" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
                                 <i class="fa-solid fa-fire text-xs w-5 text-center text-brand-accent"></i> جدیدترین محصولات
+                            </a>
+                            <a href="/articles" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
+                                <i class="fa-solid fa-book-open text-xs w-5 text-center text-brand-accent"></i> مقالات تخصصی
                             </a>
                             <a v-if="isLoggedIn" href="/orders" class="flex items-center gap-2 p-2.5 rounded-lg text-slate-600 hover:bg-gray-100 transition-colors">
                                 <i class="fa-solid fa-box text-xs w-5 text-center"></i> سفارش‌های من
