@@ -44,7 +44,7 @@ class Article extends Model
      */
     public function categories(): BelongsToMany
     {
-        return $this->belongsToMany(Category::class, 'article_category')->withTimestamps();
+        return $this->belongsToMany(Category::class, 'article_category');
     }
 
     /**
@@ -52,7 +52,7 @@ class Article extends Model
      */
     public function products(): BelongsToMany
     {
-        return $this->belongsToMany(Product::class, 'article_product')->withTimestamps();
+        return $this->belongsToMany(Product::class, 'article_product');
     }
 
     /**
@@ -60,7 +60,7 @@ class Article extends Model
      */
     public function vehicles(): BelongsToMany
     {
-        return $this->belongsToMany(VehicleEngine::class, 'article_vehicle')->withTimestamps();
+        return $this->belongsToMany(VehicleEngine::class, 'article_vehicle');
     }
 
     /**
@@ -68,6 +68,6 @@ class Article extends Model
      */
     public function brands(): BelongsToMany
     {
-        return $this->belongsToMany(VehicleBrand::class, 'article_brand')->withTimestamps();
+        return $this->belongsToMany(VehicleBrand::class, 'article_brand');
     }
 }

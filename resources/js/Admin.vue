@@ -125,6 +125,7 @@ import {
     adminArticleLoading,
     adminArticleError,
     adminArticleSuccess,
+    articleFormErrors,
     adminArticleSearch,
     adminArticleStatusFilter,
     adminArticlePage,
@@ -1740,6 +1741,9 @@ async function signOut() {
 
 async function changeSection(value) {
     section.value = value;
+    if (value === 'articles') {
+        loadAdminArticles();
+    }
     if (value === 'vehicles') {
         loadVehicleBrands();
     }
@@ -2954,39 +2958,45 @@ const CategoryTreeNode = {
                                         <h4>اطلاعات اصلی</h4>
 
                                         <div class="form-grid">
-                                            <label class="form-field">
+                                            <label class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.title }">
                                                 <span>عنوان <span class="required">*</span></span>
-                                                <input v-model.trim="articleForm.title" required autocomplete="off">
+                                                <input v-model.trim="articleForm.title" autocomplete="off">
+                                                <span v-if="articleFormErrors && articleFormErrors.title" class="field-error-text">{{ articleFormErrors.title }}</span>
                                             </label>
 
-                                            <label class="form-field">
+                                            <label class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.slug }">
                                                 <span>Slug <span class="required">*</span></span>
-                                                <input v-model.trim="articleForm.slug" required dir="ltr" autocomplete="off">
+                                                <input v-model.trim="articleForm.slug" dir="ltr" autocomplete="off">
+                                                <span v-if="articleFormErrors && articleFormErrors.slug" class="field-error-text">{{ articleFormErrors.slug }}</span>
                                             </label>
 
-                                            <label class="form-field">
+                                            <label class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.status }">
                                                 <span>وضعیت</span>
                                                 <select v-model="articleForm.status">
                                                     <option value="draft">پیش‌نویس</option>
                                                     <option value="published">منتشرشده</option>
                                                 </select>
+                                                <span v-if="articleFormErrors && articleFormErrors.status" class="field-error-text">{{ articleFormErrors.status }}</span>
                                             </label>
 
-                                            <label class="form-field">
+                                            <label class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.published_at }">
                                                 <span>تاریخ انتشار</span>
                                                 <input v-model="articleForm.published_at" type="datetime-local">
+                                                <span v-if="articleFormErrors && articleFormErrors.published_at" class="field-error-text">{{ articleFormErrors.published_at }}</span>
                                             </label>
 
-                                            <label class="form-field">
+                                            <label class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.author_id }">
                                                 <span>نویسنده</span>
                                                 <select v-model="articleForm.author_id">
                                                     <option value="">خودکار (کاربر جاری)</option>
                                                 </select>
+                                                <span v-if="articleFormErrors && articleFormErrors.author_id" class="field-error-text">{{ articleFormErrors.author_id }}</span>
                                             </label>
 
-                                            <label class="form-field full-width">
+                                            <label class="form-field full-width" :class="{ 'field-error': articleFormErrors && articleFormErrors.excerpt }">
                                                 <span>خلاصه</span>
                                                 <textarea v-model.trim="articleForm.excerpt" rows="3" placeholder="خلاصه کوتاه مقاله برای نمایش در لیست‌ها"></textarea>
+                                                <span v-if="articleFormErrors && articleFormErrors.excerpt" class="field-error-text">{{ articleFormErrors.excerpt }}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -2994,18 +3004,20 @@ const CategoryTreeNode = {
                                     <div class="form-section">
                                         <h4>محتوای مقاله</h4>
 
-                                        <label class="form-field full-width">
+                                        <label class="form-field full-width" :class="{ 'field-error': articleFormErrors && articleFormErrors.content }">
                                             <span>متن کامل</span>
                                             <textarea v-model.trim="articleForm.content" rows="15" class="content-editor" placeholder="محتوای مقاله (برای ویرایشگر غنی در آینده آماده است)"></textarea>
+                                            <span v-if="articleFormErrors && articleFormErrors.content" class="field-error-text">{{ articleFormErrors.content }}</span>
                                         </label>
                                     </div>
 
                                     <div class="form-section">
                                         <h4>تصویر شاخص</h4>
 
-                                        <label class="form-field full-width">
+                                        <label class="form-field full-width" :class="{ 'field-error': articleFormErrors && articleFormErrors.featured_image }">
                                             <span>آدرس تصویر</span>
                                             <input v-model.trim="articleForm.featured_image" type="url" dir="ltr" placeholder="https://example.com/image.jpg">
+                                            <span v-if="articleFormErrors && articleFormErrors.featured_image" class="field-error-text">{{ articleFormErrors.featured_image }}</span>
                                         </label>
                                     </div>
 
@@ -3013,7 +3025,7 @@ const CategoryTreeNode = {
                                         <h4>روابط</h4>
 
                                         <div class="form-grid">
-                                            <div class="form-field">
+                                            <div class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.categories }">
                                                 <span>دسته‌بندی‌ها</span>
                                                 <div class="multi-select-wrapper">
                                                     <MultiSelect
@@ -3025,9 +3037,10 @@ const CategoryTreeNode = {
                                                         :searchable="true"
                                                     />
                                                 </div>
+                                                <span v-if="articleFormErrors && articleFormErrors.categories" class="field-error-text">{{ articleFormErrors.categories }}</span>
                                             </div>
 
-                                            <div class="form-field">
+                                            <div class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.products }">
                                                 <span>محصولات</span>
                                                 <div class="multi-select-wrapper">
                                                     <MultiSelect
@@ -3039,9 +3052,10 @@ const CategoryTreeNode = {
                                                         :searchable="true"
                                                     />
                                                 </div>
+                                                <span v-if="articleFormErrors && articleFormErrors.products" class="field-error-text">{{ articleFormErrors.products }}</span>
                                             </div>
 
-                                            <div class="form-field">
+                                            <div class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.vehicles }">
                                                 <span>خودروها (موتورها)</span>
                                                 <div class="multi-select-wrapper">
                                                     <MultiSelect
@@ -3053,9 +3067,10 @@ const CategoryTreeNode = {
                                                         :searchable="true"
                                                     />
                                                 </div>
+                                                <span v-if="articleFormErrors && articleFormErrors.vehicles" class="field-error-text">{{ articleFormErrors.vehicles }}</span>
                                             </div>
 
-                                            <div class="form-field">
+                                            <div class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.brands }">
                                                 <span>برندها</span>
                                                 <div class="multi-select-wrapper">
                                                     <MultiSelect
@@ -3067,6 +3082,7 @@ const CategoryTreeNode = {
                                                         :searchable="true"
                                                     />
                                                 </div>
+                                                <span v-if="articleFormErrors && articleFormErrors.brands" class="field-error-text">{{ articleFormErrors.brands }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -3075,28 +3091,39 @@ const CategoryTreeNode = {
                                         <h4>SEO</h4>
 
                                         <div class="form-grid">
-                                            <label class="form-field">
+                                            <label class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.meta_title }">
                                                 <span>Meta Title</span>
                                                 <input v-model.trim="articleForm.meta_title" maxlength="60" placeholder="حداکثر 60 کاراکتر">
+                                                <span v-if="articleFormErrors && articleFormErrors.meta_title" class="field-error-text">{{ articleFormErrors.meta_title }}</span>
                                             </label>
 
-                                            <label class="form-field">
+                                            <label class="form-field" :class="{ 'field-error': articleFormErrors && articleFormErrors.canonical_url }">
                                                 <span>Canonical URL</span>
                                                 <input v-model.trim="articleForm.canonical_url" type="url" dir="ltr" placeholder="https://example.com/article-slug">
+                                                <span v-if="articleFormErrors && articleFormErrors.canonical_url" class="field-error-text">{{ articleFormErrors.canonical_url }}</span>
                                             </label>
 
-                                            <label class="form-field full-width">
+                                            <label class="form-field full-width" :class="{ 'field-error': articleFormErrors && articleFormErrors.meta_description }">
                                                 <span>Meta Description</span>
                                                 <textarea v-model.trim="articleForm.meta_description" rows="2" maxlength="160" placeholder="حداکثر 160 کاراکتر"></textarea>
+                                                <span v-if="articleFormErrors && articleFormErrors.meta_description" class="field-error-text">{{ articleFormErrors.meta_description }}</span>
                                             </label>
                                         </div>
                                     </div>
 
-                                    <div class="form-section">
+                                    <div class="form-section" :class="{ 'field-error': articleFormErrors && articleFormErrors.is_featured }">
                                         <label class="checkbox-field">
                                             <input type="checkbox" v-model="articleForm.is_featured">
                                             <span>مقاله ویژه (نمایش در صفحه اصلی)</span>
                                         </label>
+                                        <span v-if="articleFormErrors && articleFormErrors.is_featured" class="field-error-text">{{ articleFormErrors.is_featured }}</span>
+                                    </div>
+
+                                    <div class="alert"
+                                        v-if="adminArticleError || adminArticleSuccess"
+                                        :class="adminArticleError ? 'error' : 'success'"
+                                    >
+                                        {{ adminArticleError || adminArticleSuccess }}
                                     </div>
 
                                     <div class="modal-footer">
@@ -9141,6 +9168,24 @@ v-else-if="section === 'orders'"
 
 .multi-select-wrapper {
     min-width: 280px;
+}
+
+.form-field.field-error input,
+.form-field.field-error select,
+.form-field.field-error textarea {
+    border-color: #dd6870;
+}
+
+.form-field.field-error .multi-select {
+    border-color: #dd6870;
+}
+
+.field-error-text {
+    display: block;
+    color: #c9545e;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 2px;
 }
 
 .required {

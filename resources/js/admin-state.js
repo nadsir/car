@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import axios from 'axios';
 
 export const products = ref([]);
@@ -1064,6 +1064,118 @@ export const adminArticleLoading = ref(false);
 export const adminArticleError = ref('');
 export const adminArticleSuccess = ref('');
 
+export const articleFormErrors = ref({});
+let lastSubmittedArticleForm = null;
+let articleValidationSummary = false;
+
+const articleFieldLabels = {
+    title: 'عنوان مقاله',
+    slug: 'اسلاگ مقاله',
+    excerpt: 'خلاصه مقاله',
+    content: 'متن کامل مقاله',
+    featured_image: 'آدرس تصویر',
+    status: 'وضعیت',
+    published_at: 'تاریخ انتشار',
+    meta_title: 'Meta Title',
+    meta_description: 'Meta Description',
+    canonical_url: 'Canonical URL',
+    is_featured: 'مقاله ویژه',
+    author_id: 'نویسنده',
+    categories: 'دسته‌بندی‌های',
+    products: 'محصولات',
+    vehicles: 'موتورهای خودرو',
+    brands: 'برندها',
+};
+
+function baseArticleField(field) {
+    return field.includes('.') ? field.split('.')[0] : field;
+}
+
+function translateArticleError(field, message) {
+    const base = baseArticleField(field);
+    const label = articleFieldLabels[base] || field;
+    const text = String(message || '').toLowerCase();
+
+    if (text.includes('required')) {
+        if (base === 'title') return 'عنوان مقاله الزامی است.';
+        if (base === 'slug') return 'اسلاگ مقاله الزامی است.';
+        return `${label} الزامی است.`;
+    }
+
+    if (text.includes('already been taken')) {
+        if (base === 'slug') return 'این اسلاگ قبلاً استفاده شده است.';
+        return `${label} تکراری است.`;
+    }
+
+    if (text.includes('greater than 255')) {
+        if (base === 'title') return 'عنوان مقاله نباید بیشتر از ۲۵۵ کاراکتر باشد.';
+        if (base === 'slug') return 'اسلاگ مقاله نباید بیشتر از ۲۵۵ کاراکتر باشد.';
+        return `${label} نباید بیشتر از ۲۵۵ کاراکتر باشد.`;
+    }
+
+    if (text.includes('greater than 2048')) {
+        if (base === 'featured_image') return 'آدرس تصویر نباید بیشتر از ۲۰۴۸ کاراکتر باشد.';
+        if (base === 'canonical_url') return 'Canonical URL نباید بیشتر از ۲۰۴۸ کاراکتر باشد.';
+        return `${label} نباید بیشتر از ۲۰۴۸ کاراکتر باشد.`;
+    }
+
+    if (base === 'published_at' && (text.includes('date') || text.includes('valid'))) {
+        return 'تاریخ انتشار معتبر نیست.';
+    }
+
+    if (text.includes('is invalid') || text.includes('selected')) {
+        switch (base) {
+            case 'categories':
+                return 'دسته‌بندی انتخاب‌شده معتبر نیست.';
+            case 'products':
+                return 'محصول انتخاب‌شده معتبر نیست.';
+            case 'vehicles':
+                return 'موتور خودروی انتخاب‌شده معتبر نیست.';
+            case 'brands':
+                return 'برند انتخاب‌شده معتبر نیست.';
+            case 'author_id':
+                return 'نویسنده انتخاب‌شده معتبر نیست.';
+            case 'status':
+                return 'وضعیت انتخاب‌شده معتبر نیست.';
+            default:
+                return `مقدار «${label}» معتبر نیست.`;
+        }
+    }
+
+    if (base === 'is_featured' || text.includes('boolean')) {
+        return 'مقدار «مقاله ویژه» معتبر نیست.';
+    }
+
+    if (text.includes('string')) {
+        return `مقدار «${label}» معتبر نیست.`;
+    }
+
+    return `مقدار «${label}» معتبر نیست.`;
+}
+
+function translateArticleValidationErrors(errors) {
+    const result = {};
+    for (const [field, messages] of Object.entries(errors)) {
+        if (Array.isArray(messages) && messages.length) {
+            result[field] = translateArticleError(field, messages[0]);
+        }
+    }
+    return result;
+}
+
+export function clearArticleFieldError(field) {
+    if (!(field in articleFormErrors.value)) {
+        return;
+    }
+    const next = { ...articleFormErrors.value };
+    delete next[field];
+    articleFormErrors.value = next;
+    if (!Object.keys(next).length) {
+        adminArticleError.value = '';
+        articleValidationSummary = false;
+    }
+}
+
 export const adminArticleSearch = ref('');
 export const adminArticleStatusFilter = ref('');
 export const adminArticlePage = ref(1);
@@ -1102,6 +1214,9 @@ export function openCreateArticle() {
     showArticleEditor.value = true;
     adminArticleError.value = '';
     adminArticleSuccess.value = '';
+    articleFormErrors.value = {};
+    lastSubmittedArticleForm = null;
+    articleValidationSummary = false;
     loadArticleFormData();
 }
 
@@ -1128,6 +1243,9 @@ export function openEditArticle(article) {
     showArticleEditor.value = true;
     adminArticleError.value = '';
     adminArticleSuccess.value = '';
+    articleFormErrors.value = {};
+    lastSubmittedArticleForm = null;
+    articleValidationSummary = false;
     loadArticleFormData();
 }
 
@@ -1184,29 +1302,92 @@ export async function saveArticle() {
     articleSaving.value = true;
     adminArticleError.value = '';
     adminArticleSuccess.value = '';
+    articleFormErrors.value = {};
+
+    const form = articleForm.value;
+    const clientErrors = {};
+    for (const field of ['title', 'slug']) {
+        if (!String(form[field] ?? '').trim()) {
+            clientErrors[field] = `${articleFieldLabels[field]} الزامی است.`;
+        }
+    }
+    if (Object.keys(clientErrors).length) {
+        articleFormErrors.value = clientErrors;
+        lastSubmittedArticleForm = JSON.parse(JSON.stringify(form));
+        articleValidationSummary = true;
+        adminArticleError.value = 'لطفاً خطاهای فرم را بررسی کنید.';
+        articleSaving.value = false;
+        return;
+    }
+
+    lastSubmittedArticleForm = JSON.parse(JSON.stringify(form));
 
     try {
-        const data = { ...articleForm.value };
+        const data = { ...form };
 
         if (articleEditingId.value) {
             const response = await axios.put(`/api/admin/articles/${articleEditingId.value}`, data);
+            loadAdminArticles();
             adminArticleSuccess.value = 'مقاله به‌روزرسانی شد.';
+            articleFormErrors.value = {};
+            lastSubmittedArticleForm = null;
+            articleValidationSummary = false;
             return response.data;
         } else {
             const response = await axios.post('/api/admin/articles', data);
+            loadAdminArticles();
             adminArticleSuccess.value = 'مقاله ایجاد شد.';
+            articleFormErrors.value = {};
+            lastSubmittedArticleForm = null;
+            articleValidationSummary = false;
             return response.data;
         }
     } catch (error) {
-        const errors = error.response?.data?.errors;
-        adminArticleError.value = errors
-            ? Object.values(errors).flat().join(' ')
-            : error.response?.data?.message || 'ذخیره مقاله انجام نشد.';
+        const backendErrors = error.response?.data?.errors;
+        if (backendErrors && typeof backendErrors === 'object' && !Array.isArray(backendErrors)) {
+            articleFormErrors.value = translateArticleValidationErrors(backendErrors);
+            articleValidationSummary = true;
+            adminArticleError.value = 'لطفاً خطاهای فرم را بررسی کنید.';
+        } else {
+            articleValidationSummary = false;
+            adminArticleError.value =
+                error.response?.data?.message || 'ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.';
+        }
         throw error;
     } finally {
         articleSaving.value = false;
     }
 }
+
+watch(
+    articleForm,
+    (newForm) => {
+        if (!lastSubmittedArticleForm || !articleValidationSummary) {
+            return;
+        }
+        const keys = Object.keys(articleFormErrors.value || {});
+        if (!keys.length) {
+            return;
+        }
+        const snapshot = lastSubmittedArticleForm;
+        const next = { ...articleFormErrors.value };
+        let changed = false;
+        for (const key of keys) {
+            if (JSON.stringify(newForm[key]) !== JSON.stringify(snapshot[key])) {
+                delete next[key];
+                changed = true;
+            }
+        }
+        if (changed) {
+            articleFormErrors.value = next;
+            if (!Object.keys(next).length) {
+                adminArticleError.value = '';
+                articleValidationSummary = false;
+            }
+        }
+    },
+    { deep: true },
+);
 
 export async function deleteArticle(id) {
     if (!confirm('آیا از حذف این مقاله مطمئن هستید؟')) {
@@ -1237,4 +1418,7 @@ export function closeArticleForm() {
     articleForm.value = createEmptyArticleForm();
     adminArticleError.value = '';
     adminArticleSuccess.value = '';
+    articleFormErrors.value = {};
+    lastSubmittedArticleForm = null;
+    articleValidationSummary = false;
 }
