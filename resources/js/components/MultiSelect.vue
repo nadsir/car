@@ -21,11 +21,6 @@ const search = ref('');
 const open = ref(false);
 const inputRef = ref(null);
 
-// Watch for open state changes
-watch(open, (newVal, oldVal) => {
-    console.log('[MultiSelect] open changed', { oldVal, newVal, stack: new Error().stack });
-});
-
 const filteredOptions = computed(() => {
     if (!props.searchable || !search.value) return props.options;
     const query = search.value.toLowerCase();
@@ -42,14 +37,6 @@ const selectedOptions = computed(() => {
 });
 
 function toggle(option) {
-    console.log('[MultiSelect] toggle called', { 
-        optionId: option[props.optionValue], 
-        optionLabel: option[props.optionLabel],
-        optionValueProp: props.optionValue,
-        modelValue: props.modelValue,
-        open: open.value,
-        searchable: props.searchable
-    });
     const value = option[props.optionValue];
     const valueStr = String(value);
     const index = props.modelValue.findIndex(v => String(v) === valueStr);
@@ -59,26 +46,16 @@ function toggle(option) {
     } else {
         newValue.splice(index, 1);
     }
-    console.log('[MultiSelect] emitting update:modelValue', newValue);
     emit('update:modelValue', newValue);
 }
 
 function removeSelected(value) {
-    console.log('[MultiSelect] removeSelected called', { value });
     emit('update:modelValue', props.modelValue.filter(v => v !== value));
 }
 
 function handleClickOutside(event) {
     const isInside = inputRef.value && inputRef.value.contains(event.target);
-    console.log('[MultiSelect] click outside check', { 
-        isInside, 
-        target: event.target.tagName,
-        targetClass: event.target.className,
-        open: open.value,
-        inputRefExists: !!inputRef.value
-    });
     if (!isInside) {
-        console.log('[MultiSelect] closing dropdown via click outside');
         open.value = false;
     }
 }
@@ -109,8 +86,8 @@ onUnmounted(() => {
                 class="multi-select-search"
                 v-model="search"
                 :placeholder="selectedOptions.length ? '' : placeholder"
-                @focus="() => { console.log('[MultiSelect] search focus'); open = true; }"
-                @input="() => { console.log('[MultiSelect] search input'); open = true; }"
+                @focus="open = true"
+                @input="open = true"
             >
         </div>
         <div v-if="open && searchable" class="multi-select-dropdown">

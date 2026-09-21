@@ -3013,7 +3013,7 @@ const CategoryTreeNode = {
                                         <h4>روابط</h4>
 
                                         <div class="form-grid">
-                                            <label class="form-field">
+                                            <div class="form-field">
                                                 <span>دسته‌بندی‌ها</span>
                                                 <div class="multi-select-wrapper">
                                                     <MultiSelect
@@ -3025,9 +3025,9 @@ const CategoryTreeNode = {
                                                         :searchable="true"
                                                     />
                                                 </div>
-                                            </label>
+                                            </div>
 
-                                            <label class="form-field">
+                                            <div class="form-field">
                                                 <span>محصولات</span>
                                                 <div class="multi-select-wrapper">
                                                     <MultiSelect
@@ -3039,9 +3039,9 @@ const CategoryTreeNode = {
                                                         :searchable="true"
                                                     />
                                                 </div>
-                                            </label>
+                                            </div>
 
-                                            <label class="form-field">
+                                            <div class="form-field">
                                                 <span>خودروها (موتورها)</span>
                                                 <div class="multi-select-wrapper">
                                                     <MultiSelect
@@ -3053,9 +3053,9 @@ const CategoryTreeNode = {
                                                         :searchable="true"
                                                     />
                                                 </div>
-                                            </label>
+                                            </div>
 
-                                            <label class="form-field">
+                                            <div class="form-field">
                                                 <span>برندها</span>
                                                 <div class="multi-select-wrapper">
                                                     <MultiSelect
@@ -3067,7 +3067,7 @@ const CategoryTreeNode = {
                                                         :searchable="true"
                                                     />
                                                 </div>
-                                            </label>
+                                            </div>
                                         </div>
                                     </div>
 
