@@ -1055,6 +1055,101 @@ export async function updateAdminUserStatus(id, isActive) {
 
 /*
 |--------------------------------------------------------------------------
+| Comments (Admin)
+|--------------------------------------------------------------------------
+*/
+
+export const adminComments = ref([]);
+export const adminCommentLoading = ref(false);
+export const adminCommentError = ref('');
+export const adminCommentSuccess = ref('');
+
+export const adminCommentSearch = ref('');
+export const adminCommentStatusFilter = ref('');
+export const adminCommentTypeFilter = ref('');
+export const adminCommentPage = ref(1);
+export const adminCommentTotalPages = ref(1);
+export const adminCommentTotal = ref(0);
+
+export const adminCommentBusy = ref({});
+
+export async function loadAdminComments() {
+    adminCommentLoading.value = true;
+    adminCommentError.value = '';
+    adminCommentSuccess.value = '';
+
+    try {
+        const params = {
+            page: adminCommentPage.value,
+        };
+
+        if (adminCommentSearch.value) {
+            params.search = adminCommentSearch.value;
+        }
+
+        if (adminCommentStatusFilter.value) {
+            params.status = adminCommentStatusFilter.value;
+        }
+
+        if (adminCommentTypeFilter.value) {
+            params.commentable_type = adminCommentTypeFilter.value;
+        }
+
+        const response = await axios.get('/api/admin/comments', { params });
+
+        adminComments.value = response.data.data || [];
+        adminCommentTotalPages.value = response.data.last_page || 1;
+        adminCommentTotal.value = response.data.total || 0;
+
+        if (adminCommentPage.value > adminCommentTotalPages.value) {
+            adminCommentPage.value = adminCommentTotalPages.value;
+        }
+    } catch (error) {
+        adminCommentError.value = error.response?.data?.message || 'دریافت نظرات انجام نشد.';
+    } finally {
+        adminCommentLoading.value = false;
+    }
+}
+
+export async function updateAdminCommentStatus(id, status) {
+    adminCommentError.value = '';
+    adminCommentSuccess.value = '';
+    adminCommentBusy.value[id] = true;
+
+    try {
+        const response = await axios.patch(`/api/admin/comments/${id}/status`, {
+            status,
+        });
+
+        adminCommentSuccess.value = response.data?.message || 'وضعیت نظر با موفقیت به‌روزرسانی شد.';
+        return response.data;
+    } catch (error) {
+        adminCommentError.value = error.response?.data?.errors?.status?.[0] || error.response?.data?.message || 'تغییر وضعیت انجام نشد.';
+        throw error;
+    } finally {
+        adminCommentBusy.value[id] = false;
+    }
+}
+
+export async function deleteAdminComment(id) {
+    adminCommentError.value = '';
+    adminCommentSuccess.value = '';
+    adminCommentBusy.value[id] = true;
+
+    try {
+        await axios.delete(`/api/admin/comments/${id}`);
+        adminCommentSuccess.value = 'نظر با موفقیت حذف شد.';
+        return true;
+    } catch (error) {
+        adminCommentError.value = error.response?.data?.message || 'حذف نظر انجام نشد.';
+        throw error;
+    } finally {
+        adminCommentBusy.value[id] = false;
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
 | Articles (Admin)
 |--------------------------------------------------------------------------
 */

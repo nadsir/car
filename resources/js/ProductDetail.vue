@@ -12,6 +12,12 @@ import {
     addToWishlist,
     removeFromWishlist,
 } from './wishlist-state.js';
+import { createCommentSection, faNum } from './comment-state.js';
+import CommentSummary from './components/CommentSummary.vue';
+import CommentList from './components/CommentList.vue';
+import CommentComposer from './components/CommentComposer.vue';
+
+const comments = createCommentSection('product');
 
 const product = ref(null);
 const loading = ref(true);
@@ -188,6 +194,15 @@ function goBack() {
     if (window.history.length > 1) window.history.back();
     else window.location.href = '/store';
 }
+
+watch([() => product.value?.id, () => authState.user?.id], async ([productId]) => {
+    if (!productId) return;
+    if (!comments.section.ownerId) {
+        comments.section.ownerId = productId;
+        await comments.loadFirstPage();
+    }
+    comments.restoreIntent();
+});
 
 function addToCartToCart() {
     if (!displayInStock.value) return;
@@ -424,6 +439,55 @@ onMounted(fetchProduct);
                     </button>
                 </div>
             </div>
+
+            <!-- Reviews -->
+            <section class="mt-16 sm:mt-20" aria-labelledby="reviews-title">
+                <div class="mb-8 sm:mb-10 flex items-start gap-4 sm:gap-5">
+                    <span class="mt-1.5 h-12 w-1 shrink-0 rounded-full bg-brand-accent sm:h-14" aria-hidden="true"></span>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">EXP‑01 · Reviews</p>
+                        <h2 id="reviews-title" class="mt-2 text-2xl font-black leading-tight text-ink dark:text-slate-50 sm:text-3xl">
+                            تجربه‌های واقعی
+                        </h2>
+                        <p v-if="comments.section.total" class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            ثبت‌شده توسط {{ faNum(comments.section.total) }} خریدار این قطعه
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid gap-10 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:items-start lg:gap-14">
+                    <aside class="space-y-8 lg:sticky lg:top-8">
+                        <div class="border-t border-slate-200 pt-6 dark:border-slate-700">
+                            <CommentSummary
+                                :average="comments.section.ratingSummary.average"
+                                :count="comments.section.ratingSummary.count"
+                                :distribution="comments.section.ratingSummary.distribution"
+                            />
+                        </div>
+
+                        <div class="border-t border-slate-200 pb-2 pt-6 dark:border-slate-700">
+                            <p class="text-sm font-black text-ink dark:text-slate-100">
+                                تجربه‌ات را با این قطعه ثبت کن
+                            </p>
+                            <p class="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                                نگاه شما به خریدارانی که به دنبال همین قطعه‌اند کمک می‌کند.
+                            </p>
+                            <button
+                                type="button"
+                                class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-accent px-6 py-3.5 text-sm font-black text-ink transition hover:bg-brand-hover min-h-[46px]"
+                                @click="comments.openComposer()"
+                            >
+                                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                                ثبت تجربه خرید
+                            </button>
+                        </div>
+                    </aside>
+
+                    <CommentList :section="comments.section" kind="product" />
+                </div>
+            </section>
+
+            <CommentComposer v-model="comments.section.composerOpen" kind="product" :section="comments.section" />
         </div>
 
         <SiteFooter />

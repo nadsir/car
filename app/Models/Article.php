@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Article extends Model
 {
@@ -69,5 +70,13 @@ class Article extends Model
     public function brands(): BelongsToMany
     {
         return $this->belongsToMany(VehicleBrand::class, 'article_brand');
+    }
+
+    /**
+     * Comments on this article
+     */
+    public function comments(): MorphMany
+    {
+        return $this->morphMany(Comment::class, 'commentable');
     }
 }

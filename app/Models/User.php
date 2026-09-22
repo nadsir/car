@@ -53,6 +53,11 @@ class User extends Authenticatable
         return $this->hasMany(WishlistItem::class);
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

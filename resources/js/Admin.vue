@@ -110,6 +110,7 @@ import {
     loadAdminUsers,
     loadAdminUser,
     updateAdminUserStatus,
+    loadAdminComments,
     categorySearch,
     selectedCategoryId,
     expandedCategoryIds,
@@ -154,6 +155,7 @@ import AdminOrdersPage from './AdminOrdersPage.vue';
 import AdminOrderDetailPage from './AdminOrderDetailPage.vue';
 import AdminNotification from './AdminNotification.vue';
 import AdminUsersPage from './AdminUsersPage.vue';
+import AdminCommentsPage from './AdminCommentsPage.vue';
 
 
 
@@ -341,6 +343,11 @@ const nav = [
         key: 'users',
         label: 'کاربران',
         icon: '◎',
+    },
+    {
+        key: 'comments',
+        label: 'نظرات کاربران',
+        icon: '❝',
     },
     {
         key: 'settings',
@@ -1752,6 +1759,9 @@ async function changeSection(value) {
     }
     if (value === 'users') {
         loadAdminUsers();
+    }
+    if (value === 'comments') {
+        loadAdminComments();
     }
 }
 
@@ -3695,6 +3705,16 @@ v-else-if="section === 'orders'"
                 v-else-if="section === 'users'"
             >
                 <AdminUsersPage />
+            </section>
+
+            <!-- ================================================= -->
+            <!-- COMMENTS -->
+            <!-- ================================================= -->
+
+            <section
+                v-else-if="section === 'comments'"
+            >
+                <AdminCommentsPage />
             </section>
 
             <!-- ================================================= -->

@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from 'vue';
 import SiteHeader from './SiteHeader.vue';
 import SiteFooter from './SiteFooter.vue';
 import { login, isLoggedIn, sendOtp, verifyOtp } from './auth-state.js';
+import { peekCommentIntentPath } from './comment-state.js';
 
 const email = ref('');
 const password = ref('');
@@ -75,8 +76,11 @@ function changeMobile() {
     error.value = '';
     success.value = '';
 }
-const destination = new URLSearchParams(window.location.search).get('redirect') === '/checkout'
-    ? '/checkout' : '/account';
+const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+const commentIntentPath = peekCommentIntentPath();
+const destination = redirectParam === '/checkout'
+    ? '/checkout'
+    : (commentIntentPath || '/account');
 
 if (isLoggedIn.value) {
     window.location.href = destination;

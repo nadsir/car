@@ -22,6 +22,10 @@ use App\Http\Controllers\Api\CustomerWishlistController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\AdminOrderController;
 use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\ProductCommentController;
+use App\Http\Controllers\Api\ArticleCommentController;
+use App\Http\Controllers\Api\CommentReplyController;
+use App\Http\Controllers\Api\AdminCommentController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -65,6 +69,16 @@ Route::get('/articles/{slug}', [ArticleController::class, 'show']);
 Route::get('/products', [FilteredProductController::class, 'index']);
 Route::get('/products/{id}', [ProductDetailController::class, 'show'])
     ->whereNumber('id');
+
+// ── Public Comments ──────────────────────────────────────────
+Route::get('/products/{product}/comments', [ProductCommentController::class, 'index']);
+Route::get('/articles/{article}/comments', [ArticleCommentController::class, 'index']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/products/{product}/comments', [ProductCommentController::class, 'store']);
+    Route::post('/articles/{article}/comments', [ArticleCommentController::class, 'store']);
+    Route::post('/comments/{comment}/replies', [CommentReplyController::class, 'store']);
+});
 
 // ── Public vehicle hierarchy ────────────────────────────────────
 Route::get('/vehicles/brands', [VehicleController::class, 'indexBrands']);
@@ -172,4 +186,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/products/{product}/vehicle-compat', [AdminVehicleController::class, 'indexCompatibility']);
     Route::post('/products/{product}/vehicle-compat', [AdminVehicleController::class, 'attachCompatibility']);
     Route::delete('/products/{product}/vehicle-compat/{engine}', [AdminVehicleController::class, 'detachCompatibility']);
+
+    // ── Comments ──────────────────────────────────────────────────
+    Route::get('/comments', [AdminCommentController::class, 'index']);
+    Route::patch('/comments/{comment}/status', [AdminCommentController::class, 'updateStatus']);
+    Route::delete('/comments/{comment}', [AdminCommentController::class, 'destroy']);
 });

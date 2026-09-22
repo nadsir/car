@@ -1,8 +1,12 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
 import SiteHeader from './SiteHeader.vue';
 import SiteFooter from './SiteFooter.vue';
+import { state as authState } from './auth-state.js';
+import { createCommentSection, faNum } from './comment-state.js';
+import CommentList from './components/CommentList.vue';
+import CommentComposer from './components/CommentComposer.vue';
 
 const article = ref(null);
 const loading = ref(true);
@@ -10,6 +14,17 @@ const error = ref('');
 const progress = ref(0);
 let scrollCleanup = null;
 let metaCleanup = null;
+
+const discussion = createCommentSection('article');
+
+watch([() => article.value?.id, () => authState.user?.id], async ([articleId]) => {
+    if (!articleId) return;
+    if (!discussion.section.ownerId) {
+        discussion.section.ownerId = articleId;
+        await discussion.loadFirstPage();
+    }
+    discussion.restoreIntent();
+});
 
 function toPersianNumber(n) {
     return String(n).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]);
@@ -358,6 +373,33 @@ onUnmounted(() => {
                             </a>
                         </div>
                     </div>
+
+                    <!-- Discussion -->
+                    <section class="mt-14 sm:mt-16" aria-labelledby="discussion-title">
+                        <div class="mb-7 flex items-start justify-between gap-6">
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Discussion</p>
+                                <h2 id="discussion-title" class="mt-2 text-xl font-black leading-tight text-ink sm:text-2xl">
+                                    گفتگو درباره این مقاله
+                                </h2>
+                                <p v-if="discussion.section.total" class="mt-1.5 text-xs text-slate-500">
+                                    {{ faNum(discussion.section.total) }} دیدگاه ثبت شده است
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-brand-accent px-5 py-3 text-xs font-black text-ink transition hover:bg-brand-hover min-h-[44px]"
+                                @click="discussion.openComposer()"
+                            >
+                                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                                افزودن دیدگاه
+                            </button>
+                        </div>
+
+                        <CommentList :section="discussion.section" kind="article" />
+                    </section>
+
+                    <CommentComposer v-model="discussion.section.composerOpen" kind="article" :section="discussion.section" />
                 </div>
 
                 <!-- Related section (wider than reading column) -->
