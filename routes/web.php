@@ -35,6 +35,8 @@ Route::get('/articles', fn () => view('welcome'));
 Route::get('/articles/{slug}', fn () => view('welcome'))
     ->where('slug', '[a-zA-Z0-9\-_]+');
 
+Route::get('/c/{slug}', fn () => view('welcome'));
+
 Route::get('/payment/callback/{order}', [PaymentController::class, 'callback'])
     ->whereNumber('order')
     ->name('payment.callback');

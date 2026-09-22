@@ -34,6 +34,7 @@ function resolveApp() {
     if (/^\/articles\/[^/]+\/?$/.test(path)) return ArticleDetailPage;
     if (path === '/articles' || path === '/articles/') return ArticlesPage;
     if (path === '/' || path === '') return Homepage;
+    if (/^\/c\/[^/]+\/?$/.test(path)) return App;
 
     return App;
 }

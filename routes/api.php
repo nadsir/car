@@ -62,6 +62,7 @@ Route::get(
     '/categories/{slug}/filters',
     [EffectiveCategoryFilterController::class, 'index']
 );
+Route::get('/categories/{slug}', [CategoryController::class, 'show']);
 
 // ── Public Articles ──────────────────────────────────────────
 Route::get('/articles', [ArticleController::class, 'index']);

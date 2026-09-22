@@ -11,6 +11,8 @@ const products = ref([]);
 const loading = ref(false);
 const error = ref('');
 const mobileFiltersOpen = ref(false);
+const categoryDetail = ref(null);
+const categoryNotFound = ref(false);
 
 const pagination = reactive({
     currentPage: 1,
@@ -102,9 +104,15 @@ const RESERVED_KEYS = [
     'vehicle_trim_id', 'vehicle_engine_id',
 ];
 
+function categoryPathSlug() {
+    const match = window.location.pathname.match(/^\/c\/([^/]+)\/?$/);
+    if (!match) return null;
+    try { return decodeURIComponent(match[1]); } catch { return match[1]; }
+}
+
 function stateToParams() {
     const params = new URLSearchParams();
-    if (state.category) params.set('category', state.category);
+    if (state.category && !categoryPathSlug()) params.set('category', state.category);
     for (const [slug, values] of Object.entries(state.values)) { if (values.length) params.set(slug, values.join(',')); }
     if (state.priceMin !== '') params.set('price_min', state.priceMin);
     if (state.priceMax !== '') params.set('price_max', state.priceMax);
@@ -123,12 +131,17 @@ function stateToParams() {
 function pushUrl() {
     const params = stateToParams();
     const qs = params.toString();
-    history.pushState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+    const pathSlug = categoryPathSlug();
+    let path = window.location.pathname;
+    if (pathSlug) {
+        path = '/c/' + encodeURIComponent(state.category || pathSlug);
+    }
+    history.pushState({}, '', qs ? `${path}?${qs}` : path);
 }
 
 function restoreFromUrl() {
     const params = new URLSearchParams(window.location.search);
-    state.category = params.get('category') || '';
+    state.category = categoryPathSlug() ?? (params.get('category') || '');
     categorySearchQuery.value = '';
     state.priceMin = params.get('price_min') || '';
     state.priceMax = params.get('price_max') || '';
@@ -147,10 +160,11 @@ function restoreFromUrl() {
     }
 }
 
-function onPopState() {
+async function onPopState() {
     restoreFromUrl();
+    await syncCategoryDetailForPath();
     if (state.category) expandAncestorsOf(state.category);
-    refreshAfterRestore();
+    await refreshAfterRestore();
 }
 
 function getCategoryPath(items, slug, path = []) {
@@ -165,6 +179,13 @@ function getCategoryPath(items, slug, path = []) {
 
 const selectedCategoryBreadcrumb = computed(() => {
     if (!state.category) return [];
+    if (categoryPathSlug() && categoryDetail.value?.ancestors?.length) {
+        const crumbs = categoryDetail.value.ancestors.map((a) => ({ name: a.name, slug: a.slug }));
+        if (!crumbs.some((c) => c.slug === state.category)) {
+            crumbs.push({ name: categoryDetail.value.name, slug: categoryDetail.value.slug });
+        }
+        return crumbs;
+    }
     return getCategoryPath(categories.value, state.category) || [];
 });
 
@@ -204,10 +225,18 @@ async function selectCategorySlug(slug) {
     state.category = slug; state.values = {}; state.page = 1; filters.value = [];
     categorySearchQuery.value = '';
     expandAncestorsOf(slug);
+    if (categoryPathSlug()) { await loadCategoryDetail(slug); } else { categoryDetail.value = null; }
     await loadFilters(); pushUrl(); await loadProducts();
 }
 
 async function clearCategorySelection() {
+    if (categoryPathSlug()) {
+        state.category = ''; state.values = {}; state.page = 1; filters.value = [];
+        categorySearchQuery.value = ''; categoryDetail.value = null; categoryNotFound.value = false;
+        history.pushState({}, '', '/store');
+        await loadProducts();
+        return;
+    }
     state.category = ''; state.values = {}; state.page = 1; filters.value = [];
     categorySearchQuery.value = '';
     pushUrl(); await loadProducts();
@@ -221,6 +250,32 @@ async function loadFilters() {
     if (!state.category) { filters.value = []; return; }
     const { data } = await axios.get(`/api/categories/${state.category}/filters`);
     filters.value = data.data || [];
+}
+
+async function loadCategoryDetail(slug) {
+    try {
+        const { data } = await axios.get(`/api/categories/${encodeURIComponent(slug)}`);
+        categoryDetail.value = data.data || null;
+        categoryNotFound.value = false;
+        return true;
+    } catch (e) {
+        if (e.response?.status === 404) {
+            categoryDetail.value = null;
+            categoryNotFound.value = true;
+            return false;
+        }
+        throw e;
+    }
+}
+
+async function syncCategoryDetailForPath() {
+    const slug = categoryPathSlug();
+    if (slug) {
+        await loadCategoryDetail(slug);
+    } else {
+        categoryDetail.value = null;
+        categoryNotFound.value = false;
+    }
 }
 
 function expandAncestorsOf(slug) {
@@ -313,6 +368,7 @@ const pageNumbers = computed(() => {
 });
 
 async function clearAllFilters() {
+    if (categoryPathSlug()) { await clearCategorySelection(); return; }
     state.category = ''; state.values = {}; state.priceMin = ''; state.priceMax = '';
     state.inStock = false; state.search = ''; state.sort = 'newest'; state.page = 1;
     state.vehicleBrandId = ''; state.vehicleModelId = ''; state.vehicleGenerationId = '';
@@ -353,6 +409,7 @@ async function loadProducts() {
 }
 
 async function refreshAfterRestore() {
+    if (categoryNotFound.value) { filters.value = []; return; }
     if (state.category) { expandAncestorsOf(state.category); await loadFilters(); } else { filters.value = []; }
     if (state.vehicleBrandId) await loadVehicleModels(state.vehicleBrandId); else { vehicleModels.value = []; }
     if (state.vehicleModelId) await loadVehicleGenerations(state.vehicleModelId); else { vehicleGenerations.value = []; }
@@ -412,7 +469,7 @@ function onImgError(e) {
 onMounted(async () => {
     restoreFromUrl();
     window.addEventListener('popstate', onPopState);
-    try { await loadCategories(); await loadVehicleBrands(); await refreshAfterRestore(); }
+    try { await loadCategories(); await loadVehicleBrands(); await syncCategoryDetailForPath(); await refreshAfterRestore(); }
     catch { error.value = 'دریافت اطلاعات فروشگاه ناموفق بود.'; }
 });
 onUnmounted(() => {
@@ -627,6 +684,12 @@ onUnmounted(() => {
                             <div class="aspect-square bg-sand rounded-t-xl"></div>
                             <div class="p-3 space-y-2"><div class="h-2 bg-sand rounded w-3/4"></div><div class="h-3 bg-sand rounded w-1/2"></div></div>
                         </div>
+                    </div>
+
+                    <!-- Category not found -->
+                    <div v-else-if="categoryNotFound" class="text-center py-16 rounded-xl border border-gray-200 bg-white">
+                        <i class="fa-solid fa-folder-open text-3xl text-slate-400 mb-3 block"></i>
+                        <p class="text-sm text-slate-500">دسته‌بندی مورد نظر یافت نشد.</p>
                     </div>
 
                     <!-- Empty -->
