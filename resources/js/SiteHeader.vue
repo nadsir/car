@@ -4,6 +4,7 @@ import axios from 'axios';
 import { cartCount } from './cart-state.js';
 import { state as authState, isLoggedIn, logout } from './auth-state.js';
 import { wishlistCount, loadWishlist, resetWishlist } from './wishlist-state.js';
+import MegaMenu from './components/MegaMenu.vue';
 
 const userDropdownOpen = ref(false);
 const userDropdown = ref(null);
@@ -321,6 +322,13 @@ onUnmounted(() => {
             </div>
         </div>
 
+        <!-- DESKTOP CATEGORY TOOLBAR -->
+        <div class="hidden border-t border-gray-100 py-2.5 lg:block">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <MegaMenu />
+            </div>
+        </div>
+
         <!-- MOBILE SEARCH OVERLAY -->
         <Teleport to="body">
             <div v-if="mobileSearchOpen" class="fixed inset-0 z-50 bg-white/95 md:hidden flex flex-col">
@@ -381,15 +389,23 @@ onUnmounted(() => {
         <!-- MOBILE DRAWER -->
         <Teleport to="body">
             <div v-if="drawerOpen" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden" @click="onDrawerBackdropClick">
-                <div class="w-[min(88vw,320px)] max-w-[320px] h-full bg-white border-l border-gray-200 p-4 flex flex-col justify-between" @click.stop>
-                    <div>
+                <div class="w-[min(88vw,320px)] max-w-[320px] h-full bg-white border-l border-gray-200 flex flex-col" @click.stop>
+                    <div class="min-h-0 flex-1 p-4 pb-0 overflow-y-auto">
                         <div class="flex items-center justify-between pb-3 border-b border-gray-200">
                             <span class="font-bold text-ink text-sm">منوی دسترسی</span>
                             <button type="button" aria-label="بستن" class="p-2 text-slate-500 hover:text-ink" @click="closeDrawer">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
                         </div>
-                        <div class="mt-3 space-y-1.5 text-sm">
+
+                        <div class="pb-2 mt-2">
+                            <p class="flex items-center gap-2 px-2 py-1.5 text-[11px] font-bold text-slate-400 tracking-wide">
+                                <i class="fa-solid fa-layer-group text-brand-accent"></i> دسته‌بندی قطعات
+                            </p>
+                            <MegaMenu variant="mobile" />
+                        </div>
+
+                        <div class="mt-3 space-y-1.5 text-sm border-t border-gray-100 pt-3">
                             <a href="/" class="flex items-center gap-2 p-2.5 rounded-lg text-ink font-bold hover:bg-gray-100 transition-colors">
                                 <i class="fa-solid fa-house text-xs w-5 text-center"></i> خانه
                             </a>
@@ -424,7 +440,7 @@ onUnmounted(() => {
                             </button>
                         </div>
                     </div>
-                    <div class="pt-3 border-t border-gray-200 text-[11px] text-slate-500">
+                    <div class="pt-3 border-t border-gray-200 text-[11px] text-slate-500 shrink-0 bg-white">
                         <p>تلفن پشتیبانی: <span dir="ltr" class="text-slate-600">۰۲۱-۸۸۹۹۰۰۰۰</span></p>
                     </div>
                 </div>
