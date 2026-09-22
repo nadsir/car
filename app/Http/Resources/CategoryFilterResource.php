@@ -14,6 +14,8 @@ class CategoryFilterResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $values = $this->facetValues ?? $this->values;
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -28,12 +30,23 @@ class CategoryFilterResource extends JsonResource
 
             'sort_order' => (int) $this->pivot?->sort_order,
 
-            'values' => $this->values->map(function ($value) {
+            'values' => $values->map(function ($value) {
+                if (is_array($value)) {
+                    return [
+                        'id' => $value['id'] ?? null,
+                        'label' => $value['label'] ?? null,
+                        'value' => $value['value'] ?? null,
+                        'hex_color' => $value['hex_color'] ?? null,
+                        'count' => $value['count'] ?? 0,
+                    ];
+                }
+
                 return [
                     'id' => $value->id,
                     'label' => $value->label,
                     'value' => $value->value,
                     'hex_color' => $value->hex_color,
+                    'count' => 0,
                 ];
             })->values(),
         ];

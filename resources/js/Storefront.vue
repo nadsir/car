@@ -248,7 +248,13 @@ async function loadCategories() {
 }
 async function loadFilters() {
     if (!state.category) { filters.value = []; return; }
-    const { data } = await axios.get(`/api/categories/${state.category}/filters`);
+    const params = stateToParams();
+    params.delete('category');
+    params.delete('per_page');
+    params.delete('page');
+    params.delete('sort');
+    const config = params.toString() ? { params } : undefined;
+    const { data } = await axios.get(`/api/categories/${state.category}/filters`, config);
     filters.value = data.data || [];
 }
 

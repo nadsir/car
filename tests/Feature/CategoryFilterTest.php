@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
 use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -36,7 +37,7 @@ class CategoryFilterTest extends TestCase
             'is_required' => true,
         ]);
 
-        AttributeValue::create([
+        $brembo = AttributeValue::create([
             'attribute_id' => $included->id,
             'label' => 'Brembo',
             'value' => 'brembo',
@@ -57,6 +58,20 @@ class CategoryFilterTest extends TestCase
             'sort_order' => 1,
         ]);
 
+        $product = Product::create([
+            'name' => 'Brembo brake pads',
+            'slug' => 'brembo-brake-pads',
+            'sku' => 'QA-BRE-1',
+            'price' => 120,
+            'is_active' => true,
+            'published_at' => now(),
+        ]);
+        $product->categories()->attach($category->id);
+        $product->attributeValues()->attach(
+            $brembo->id,
+            ['attribute_id' => $included->id]
+        );
+
         $this->getJson('/api/categories/brake-pads/filters')
             ->assertOk()
             ->assertJsonCount(1, 'data')
@@ -65,6 +80,8 @@ class CategoryFilterTest extends TestCase
             ->assertJsonPath('data.0.is_required', true)
             ->assertJsonPath('data.0.is_variant_axis', true)
             ->assertJsonPath('data.0.sort_order', 2)
-            ->assertJsonPath('data.0.values.0.label', 'Brembo');
+            ->assertJsonCount(1, 'data.0.values')
+            ->assertJsonPath('data.0.values.0.label', 'Brembo')
+            ->assertJsonPath('data.0.values.0.count', 1);
     }
 }
