@@ -164,11 +164,20 @@ function applySeo(a) {
     };
 }
 
+function decodeSlugFromPath(segment) {
+    try {
+        return decodeURIComponent(segment);
+    } catch {
+        return segment;
+    }
+}
+
 async function fetchArticle() {
     const match = location.pathname.match(/\/articles\/([^/]+)\/?$/);
     if (!match) { error.value = 'مقاله مورد نظر پیدا نشد.'; loading.value = false; return; }
+    const slug = decodeSlugFromPath(match[1]);
     try {
-        const { data } = await axios.get(`/api/articles/${encodeURIComponent(match[1])}`);
+        const { data } = await axios.get(`/api/articles/${encodeURIComponent(slug)}`);
         article.value = data.data || data;
     } catch (e) {
         error.value = e.response?.status === 404 ? 'مقاله مورد نظر پیدا نشد.' : 'خطا در دریافت اطلاعات مقاله.';
