@@ -33,7 +33,7 @@ Route::get('/products/{id}', fn () => view('welcome'))
 Route::get('/articles', fn () => view('welcome'));
 
 Route::get('/articles/{slug}', fn () => view('welcome'))
-    ->where('slug', '[a-zA-Z0-9\-_]+');
+    ->where('slug', '[^/]+');
 
 Route::get('/c/{slug}', fn () => view('welcome'));
 
