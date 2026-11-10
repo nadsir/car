@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-label="نمای صنعتی از دیسک ترمز و قطعات خودرو">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0d0f"/>
+      <stop offset="0.55" stop-color="#181b1e"/>
+      <stop offset="1" stop-color="#2a2d31"/>
+    </linearGradient>
+    <radialGradient id="glow3" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#FFCD00" stop-opacity="0.38"/>
+      <stop offset="0.62" stop-color="#FFCD00" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFCD00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="disc3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7b8289"/>
+      <stop offset="0.35" stop-color="#343a40"/>
+      <stop offset="0.7" stop-color="#6b737b"/>
+      <stop offset="1" stop-color="#1b1f23"/>
+    </linearGradient>
+    <linearGradient id="caliper3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFCD00"/>
+      <stop offset="1" stop-color="#a88300"/>
+    </linearGradient>
+    <pattern id="grid3" width="80" height="80" patternUnits="userSpaceOnUse">
+      <path d="M80 0H0V80" fill="none" stroke="#ffffff" stroke-opacity="0.03" stroke-width="1"/>
+      <circle cx="0" cy="0" r="1.2" fill="#FFCD00" fill-opacity="0.18"/>
+    </pattern>
+    <filter id="blur3" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="32"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg3)"/>
+  <rect width="1600" height="900" fill="url(#grid3)"/>
+  <ellipse cx="1040" cy="460" rx="600" ry="390" fill="url(#glow3)" filter="url(#blur3)"/>
+
+  <g opacity="0.5" stroke="#FFCD00" stroke-width="2" stroke-linecap="round" fill="none">
+    <path d="M120 250H330"/>
+    <path d="M120 282H250"/>
+    <path d="M120 680H360"/>
+    <path d="M120 712H290"/>
+  </g>
+
+  <!-- brake disc -->
+  <g transform="translate(1060 450)">
+    <circle r="326" fill="#0b0d0f" stroke="#FFCD00" stroke-opacity="0.22" stroke-width="4"/>
+    <circle r="286" fill="url(#disc3)" stroke="#c3c9cf" stroke-opacity="0.28" stroke-width="3"/>
+    <circle r="244" fill="none" stroke="#0d1013" stroke-opacity="0.7" stroke-width="16"/>
+    <circle r="214" fill="#1b1f23" stroke="#FFCD00" stroke-opacity="0.25" stroke-width="2"/>
+
+    <!-- drilled holes -->
+    <g fill="#080a0c" stroke="#FFCD00" stroke-opacity="0.22" stroke-width="3">
+      <circle cx="0" cy="-252" r="13"/>
+      <circle cx="178" cy="-178" r="13"/>
+      <circle cx="252" cy="0" r="13"/>
+      <circle cx="178" cy="178" r="13"/>
+      <circle cx="0" cy="252" r="13"/>
+      <circle cx="-178" cy="178" r="13"/>
+      <circle cx="-252" cy="0" r="13"/>
+      <circle cx="-178" cy="-178" r="13"/>
+
+      <circle cx="0" cy="-175" r="9"/>
+      <circle cx="124" cy="-124" r="9"/>
+      <circle cx="175" cy="0" r="9"/>
+      <circle cx="124" cy="124" r="9"/>
+      <circle cx="0" cy="175" r="9"/>
+      <circle cx="-124" cy="124" r="9"/>
+      <circle cx="-175" cy="0" r="9"/>
+      <circle cx="-124" cy="-124" r="9"/>
+    </g>
+
+    <!-- centre hub -->
+    <circle r="118" fill="#14181c" stroke="#8b939a" stroke-opacity="0.4" stroke-width="3"/>
+    <circle r="78" fill="#23282d" stroke="#FFCD00" stroke-opacity="0.55" stroke-width="4"/>
+    <circle r="34" fill="#0b0d0f" stroke="#FFCD00" stroke-opacity="0.8" stroke-width="3"/>
+    <g fill="#9ba2a9">
+      <circle cx="0" cy="-96" r="9"/>
+      <circle cx="83" cy="-48" r="9"/>
+      <circle cx="83" cy="48" r="9"/>
+      <circle cx="0" cy="96" r="9"/>
+      <circle cx="-83" cy="48" r="9"/>
+      <circle cx="-83" cy="-48" r="9"/>
+    </g>
+
+    <!-- caliper -->
+    <g transform="translate(190 -160) rotate(28)">
+      <rect x="0" y="0" width="132" height="212" rx="34" fill="url(#caliper3)"/>
+      <rect x="24" y="28" width="84" height="156" rx="22" fill="#15181b" stroke="#FFCD00" stroke-opacity="0.4" stroke-width="2"/>
+      <path d="M66 58V154" stroke="#FFCD00" stroke-opacity="0.5" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <!-- highlight arc -->
+    <path d="M-250 92A266 266 0 0 1-92-250" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="8" stroke-linecap="round"/>
+  </g>
+
+  <!-- floating bolts / parts -->
+  <g opacity="0.6" fill="none" stroke="#FFCD00" stroke-width="2">
+    <circle cx="360" cy="470" r="54"/>
+    <circle cx="360" cy="470" r="20"/>
+    <path d="M360 416V524M306 470H414M322 432L398 508M398 432L322 508"/>
+  </g>
+  <g opacity="0.4" fill="#FFCD00">
+    <rect x="1380" y="190" width="56" height="14" rx="7"/>
+    <rect x="1352" y="226" width="92" height="14" rx="7"/>
+    <rect x="1408" y="262" width="36" height="14" rx="7"/>
+  </g>
+</svg>

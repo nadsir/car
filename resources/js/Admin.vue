@@ -3759,7 +3759,7 @@ v-else-if="section === 'orders'"
                     closeProductModal()
                 "
             >
-                <div class="modal">
+                <div class="modal product-modal">
                     <!-- MODAL HEADER -->
 
                     <div class="modal-header">
@@ -9382,6 +9382,116 @@ v-else-if="section === 'orders'"
 
 .dark .checkbox-field span {
     color: #e5e5e5;
+}
+
+/* =========================================================
+   PRODUCT MODAL — DESKTOP WIDE LAYOUT
+========================================================= */
+
+.product-modal {
+    width: min(1152px, 100%);
+    max-width: 1152px;
+    max-height: min(90vh, calc(100vh - 60px));
+    border-radius: 22px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.product-modal .modal-header {
+    flex: 0 0 auto;
+    padding: 22px 28px;
+}
+
+.product-modal .product-form {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.product-modal .form-section {
+    padding: 24px 28px;
+    margin-bottom: 0;
+}
+
+.product-modal .form-section-title {
+    margin-bottom: 14px;
+    font-size: 15px;
+}
+
+.product-modal .form-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.product-modal .field.full {
+    grid-column: 1 / -1;
+}
+
+.product-modal .modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    margin: 0;
+    padding: 16px 28px;
+    box-shadow: 0 -10px 24px rgba(30, 30, 60, .06);
+}
+
+@media (max-width: 800px) {
+    .product-modal {
+        max-height: calc(100vh - 20px);
+        border-radius: 20px 20px 0 0;
+    }
+
+    .product-modal .modal-header {
+        padding: 18px;
+    }
+
+    .product-modal .form-section {
+        padding: 20px 18px;
+    }
+
+    .product-modal .form-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .product-modal .modal-footer {
+        padding: 14px 18px;
+    }
+}
+
+@media (min-width: 701px) {
+    .product-modal .form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+
+    .product-modal .category-select {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .product-modal .form-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    .product-modal .category-select {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .product-modal .attributes-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+    }
+}
+
+.product-modal .category-select .check-card {
+    min-width: 0;
 }
 </style>
 

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="قطعات موتور خودرو">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfaf6"/>
+      <stop offset="0.5" stop-color="#f0eee7"/>
+      <stop offset="1" stop-color="#e3e0d5"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="48%" r="50%">
+      <stop offset="0" stop-color="#FFCD00" stop-opacity="0.3"/>
+      <stop offset="0.65" stop-color="#FFCD00" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFCD00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#68717b"/>
+      <stop offset="0.45" stop-color="#343b43"/>
+      <stop offset="1" stop-color="#171b1f"/>
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#1a1a1a" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#grid)"/>
+  <ellipse cx="400" cy="290" rx="330" ry="250" fill="url(#glow)"/>
+  <circle cx="400" cy="290" r="245" fill="none" stroke="#1a1a1a" stroke-opacity="0.07" stroke-width="2"/>
+  <circle cx="400" cy="290" r="285" fill="none" stroke="#FFCD00" stroke-opacity="0.22" stroke-width="2" stroke-dasharray="6 14"/>
+
+  <g opacity="0.6" stroke="#FFCD00" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M82 150H215"/>
+    <path d="M82 176H172"/>
+    <path d="M590 472H712"/>
+    <path d="M646 498H718"/>
+  </g>
+  <g opacity="0.3" fill="#1a1a1a">
+    <circle cx="138" cy="430" r="3"/>
+    <circle cx="108" cy="468" r="2"/>
+    <circle cx="700" cy="138" r="3"/>
+    <circle cx="662" cy="104" r="2"/>
+  </g>
+
+  <g transform="translate(400 286) rotate(-4)">
+    <ellipse cx="0" cy="164" rx="216" ry="28" fill="#1a1a1a" opacity="0.1"/>
+
+    <rect x="-194" y="-18" width="388" height="212" rx="36" fill="url(#metal)" stroke="#7f8893" stroke-opacity="0.5" stroke-width="3"/>
+    <rect x="-162" y="12" width="324" height="152" rx="24" fill="#12161a" stroke="#FFCD00" stroke-opacity="0.2" stroke-width="2"/>
+
+    <g fill="url(#metal)" stroke="#98a1ab" stroke-opacity="0.55" stroke-width="2">
+      <rect x="-152" y="-96" width="62" height="96" rx="14"/>
+      <rect x="-76" y="-96" width="62" height="96" rx="14"/>
+      <rect x="2" y="-96" width="62" height="96" rx="14"/>
+      <rect x="80" y="-96" width="62" height="96" rx="14"/>
+    </g>
+    <g fill="#171b1f" stroke="#FFCD00" stroke-opacity="0.5" stroke-width="2">
+      <rect x="-143" y="-136" width="44" height="48" rx="9"/>
+      <rect x="-67" y="-136" width="44" height="48" rx="9"/>
+      <rect x="11" y="-136" width="44" height="48" rx="9"/>
+      <rect x="89" y="-136" width="44" height="48" rx="9"/>
+    </g>
+    <g stroke="#FFCD00" stroke-opacity="0.5" stroke-width="3" stroke-linecap="round">
+      <path d="M-121 -88V-50"/>
+      <path d="M-45 -88V-50"/>
+      <path d="M33 -88V-50"/>
+      <path d="M111 -88V-50"/>
+    </g>
+
+    <path d="M-194 96H-240V176" stroke="#9aa3ad" stroke-width="15" stroke-linecap="round" fill="none" opacity="0.75"/>
+    <path d="M-240 176H-276" stroke="#9aa3ad" stroke-width="15" stroke-linecap="round" fill="none" opacity="0.75"/>
+    <path d="M194 76H238V32" stroke="#9aa3ad" stroke-width="13" stroke-linecap="round" fill="none" opacity="0.6"/>
+
+    <circle cx="160" cy="94" r="44" fill="none" stroke="#FFCD00" stroke-width="8" stroke-opacity="0.85"/>
+    <circle cx="160" cy="94" r="23" fill="#171b1f" stroke="#a8b0b9" stroke-width="3"/>
+    <circle cx="160" cy="94" r="7" fill="#FFCD00" fill-opacity="0.8"/>
+    <path d="M160 50V70M160 118V138" stroke="#FFCD00" stroke-opacity="0.5" stroke-width="3" stroke-linecap="round"/>
+
+    <g fill="#FFCD00" opacity="0.65">
+      <circle cx="-120" cy="136" r="4"/>
+      <circle cx="-96" cy="136" r="4"/>
+      <circle cx="-72" cy="136" r="4"/>
+    </g>
+  </g>
+</svg>

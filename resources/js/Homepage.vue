@@ -7,6 +7,60 @@ import SiteFooter from './SiteFooter.vue';
 /* ── Theme ────────────────────────────────────────────────── */
 const isLight = ref(false);
 
+/* ── Hero Slider ──────────────────────────────────────────── */
+const heroSlides = [
+    {
+        image: '/images/hero-parts-1.svg',
+        alt: 'قطعات خودرو در نور کارگاه',
+        eyebrow: 'انتخاب دقیق، خرید مطمئن',
+        title: 'قطعهٔ درست برای خودروی شما',
+        description: 'جستجو بر اساس کمپانی، مدل، نسل، تیپ و موتور؛ بدون حدس و گمان.',
+    },
+    {
+        image: '/images/hero-parts-2.svg',
+        alt: 'موتور و قطعات مکانیکی خودرو',
+        eyebrow: 'تنوعی برای هر نیاز',
+        title: 'از موتور تا بدنه، یک انتخاب مطمئن',
+        description: 'قطعات مصرفی و اصلی برای خودروهای داخلی، چینی و وارداتی.',
+    },
+    {
+        image: '/images/hero-parts-3.svg',
+        alt: 'دیسک ترمز و قطعات یدکی خودرو',
+        eyebrow: 'انتخاب آسان، خرید مطمئن',
+        title: 'قطعهٔ مناسب را با اطمینان پیدا کنید',
+        description: 'با اطلاعات دقیق سازگاری و راهنمایی فنی، خرید خود را نهایی کنید.',
+    },
+];
+
+const activeHeroSlide = ref(0);
+const activeHero = computed(() => heroSlides[activeHeroSlide.value]);
+let heroTimer = null;
+
+function setHeroSlide(index) {
+    activeHeroSlide.value = (index + heroSlides.length) % heroSlides.length;
+}
+
+function nextHeroSlide() {
+    setHeroSlide(activeHeroSlide.value + 1);
+}
+
+function prevHeroSlide() {
+    setHeroSlide(activeHeroSlide.value - 1);
+}
+
+function stopHeroAutoplay() {
+    if (heroTimer) {
+        clearInterval(heroTimer);
+        heroTimer = null;
+    }
+}
+
+function startHeroAutoplay() {
+    stopHeroAutoplay();
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return;
+    heroTimer = setInterval(nextHeroSlide, 7000);
+}
+
 /* ── Toast ────────────────────────────────────────────────── */
 const toastVisible = ref(false);
 const toastTitle = ref('');
@@ -164,6 +218,77 @@ async function loadCategories() {
     categoriesLoading.value = false;
 }
 
+const categoryItems = computed(() => {
+    const flattened = categories.value.flatMap((category) => (
+        category.children?.length ? category.children : [category]
+    ));
+    return flattened.slice(0, 9);
+});
+
+const categoryIconMap = [
+    { tokens: ['engine', 'موتور'], icon: 'fa-solid fa-gears' },
+    { tokens: ['powertrain', 'انتقال'], icon: 'fa-solid fa-gear' },
+    { tokens: ['brake', 'ترمز'], icon: 'fa-solid fa-compact-disc' },
+    { tokens: ['suspension', 'steering', 'تعلیق', 'فرمان'], icon: 'fa-solid fa-car-side' },
+    { tokens: ['electrical', 'electronics', 'برق', 'الکترونیک'], icon: 'fa-solid fa-bolt' },
+    { tokens: ['air-conditioning', 'تهویه', 'کولر'], icon: 'fa-solid fa-snowflake' },
+    { tokens: ['body', 'lighting', 'بدنه', 'روشنایی'], icon: 'fa-solid fa-lightbulb' },
+    { tokens: ['filter', 'فیلتر', 'سرویس'], icon: 'fa-solid fa-filter' },
+    { tokens: ['consumable', 'accessories', 'مصرفی', 'متفرقه'], icon: 'fa-solid fa-box-open' },
+];
+
+const categoryAccentStyles = [
+    'text-[#a87f00]',
+    'text-cyan-700',
+    'text-emerald-700',
+    'text-violet-700',
+    'text-rose-700',
+    'text-amber-700',
+    'text-blue-700',
+    'text-teal-700',
+    'text-slate-700',
+];
+
+const categoryImageMap = [
+    { tokens: ['engine', 'موتور'], image: '/images/categories/engine.svg' },
+    { tokens: ['powertrain', 'انتقال'], image: '/images/categories/powertrain.svg' },
+    { tokens: ['brake', 'ترمز'], image: '/images/categories/brake.svg' },
+    { tokens: ['suspension', 'steering', 'تعلیق', 'فرمان'], image: '/images/categories/suspension.svg' },
+    { tokens: ['electrical', 'electronics', 'برق', 'الکترونیک'], image: '/images/categories/electrical.svg' },
+    { tokens: ['air-conditioning', 'تهویه', 'کولر'], image: '/images/categories/air-conditioning.svg' },
+    { tokens: ['body', 'lighting', 'بدنه', 'روشنایی'], image: '/images/categories/body-lighting.svg' },
+    { tokens: ['filter', 'فیلتر', 'سرویس'], image: '/images/categories/filters.svg' },
+    { tokens: ['consumable', 'accessories', 'مصرفی', 'متفرقه'], image: '/images/categories/consumables.svg' },
+];
+
+const categoryImageFallbacks = [
+    '/images/categories/engine.svg',
+    '/images/categories/powertrain.svg',
+    '/images/categories/brake.svg',
+    '/images/categories/suspension.svg',
+    '/images/categories/electrical.svg',
+    '/images/categories/air-conditioning.svg',
+    '/images/categories/body-lighting.svg',
+    '/images/categories/filters.svg',
+    '/images/categories/consumables.svg',
+];
+
+function categoryIcon(category) {
+    const haystack = `${category.slug || ''} ${category.name || ''}`.toLowerCase();
+    return categoryIconMap.find(({ tokens }) => tokens.some((token) => haystack.includes(token)))?.icon
+        || 'fa-solid fa-layer-group';
+}
+
+function categoryImage(category, index = 0) {
+    const haystack = `${category.slug || ''} ${category.name || ''}`.toLowerCase();
+    return categoryImageMap.find(({ tokens }) => tokens.some((token) => haystack.includes(token)))?.image
+        || categoryImageFallbacks[index % categoryImageFallbacks.length];
+}
+
+function categoryAccent(index) {
+    return categoryAccentStyles[index % categoryAccentStyles.length];
+}
+
 /* ── Featured Products ────────────────────────────────────── */
 const featuredProducts = ref([]);
 const featuredLoading = ref(false);
@@ -245,12 +370,14 @@ function onNewsletterSubmit() {
 /* ── Lifecycle ────────────────────────────────────────────── */
 onMounted(async () => {
     window.addEventListener('toast', onToastEvent);
+    startHeroAutoplay();
     await Promise.all([loadVehicleBrands(), loadCategories(), loadFeaturedProducts(), loadArticles()]);
 });
 
 onUnmounted(() => {
     window.removeEventListener('toast', onToastEvent);
     clearTimeout(toastTimer);
+    stopHeroAutoplay();
 });
 </script>
 
@@ -282,144 +409,174 @@ onUnmounted(() => {
 
         <main>
 
-            <!-- HERO -->
-            <section class="relative min-h-[480px] sm:min-h-[560px] pt-10 sm:pt-12 pb-16 sm:pb-20 overflow-hidden">
-                <div class="absolute top-1/4 -right-40 w-96 h-96 bg-brand-accent/15 rounded-full blur-3xl pointer-events-none"></div>
-                <div class="absolute bottom-10 -left-40 w-96 h-96 bg-cyan-500/8 rounded-full blur-3xl pointer-events-none"></div>
+            <!-- HERO / FULL-WIDTH SLIDER -->
+            <section
+                class="relative w-full overflow-hidden bg-[#0c0d0f]"
+                aria-roledescription="carousel"
+                aria-label="بنر اصلی"
+                @mouseenter="stopHeroAutoplay"
+                @mouseleave="startHeroAutoplay"
+                @focusin="stopHeroAutoplay"
+                @focusout="startHeroAutoplay"
+            >
+                <div class="relative h-[640px] w-full sm:h-[660px] lg:h-[600px] xl:h-[640px]">
 
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                    <div class="grid lg:grid-cols-12 gap-12 items-center">
+                    <!-- BACKGROUND SLIDES -->
+                    <div
+                        v-for="(slide, index) in heroSlides"
+                        :key="slide.image"
+                        class="absolute inset-0 transition-opacity duration-700 ease-out"
+                        :class="index === activeHeroSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                        :aria-hidden="index !== activeHeroSlide"
+                    >
+                        <img
+                            :src="slide.image"
+                            :alt="slide.alt"
+                            class="h-full w-full object-cover"
+                            :loading="index === 0 ? 'eager' : 'lazy'"
+                            draggable="false"
+                        />
+                        <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(0,0,0,0.8),rgba(0,0,0,0.45),rgba(0,0,0,0.1))]"></div>
+                        <div class="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.75),rgba(0,0,0,0.1),rgba(0,0,0,0.2))]"></div>
+                    </div>
 
-                        <!-- HERO CONTENT -->
-                        <div class="lg:col-span-7 space-y-6 text-center lg:text-right">
-                            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 border border-brand-accent/30 text-brand-accent text-xs font-semibold">
-                                <span class="w-1.5 h-1.5 rounded-full bg-brand-accent animate-pulse"></span>
-                                مرجع تخصصی قطعات خودروهای داخلی، چینی و وارداتی
-                            </div>
+                    <!-- SUBTLE TEXTURE -->
+                    <div class="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(#FFCD00_0.6px,transparent_0.6px)] [background-size:28px_28px]"></div>
 
-                            <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-ink leading-tight">
-                                قطعه مناسب، قیمت رقابتی؛
-                                <br>
-                                <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-accent via-yellow-300 to-amber-200">ساده‌تر از همیشه پیدا کن!</span>
-                            </h1>
+                    <div class="relative z-10 mx-auto h-full max-w-7xl px-4 sm:px-6 lg:px-8">
 
-                            <p class="text-slate-500 text-base sm:text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-                                تأمین قطعات خودرو با امکان خرید تکی و عمده، بررسی سازگاری با خودرو و پشتیبانی تخصصی.
-                            </p>
-
-                            <div class="pt-4 grid grid-cols-3 gap-3 sm:gap-4 max-w-lg mx-auto lg:mx-0 border-b border-gray-200 py-4">
-                                <div>
-                                    <div class="text-xl sm:text-3xl font-black text-ink font-mono">+۵۰,۰۰۰</div>
-                                    <div class="text-[10px] sm:text-xs text-slate-500 mt-1">تنوع قطعات</div>
-                                </div>
-                                <div>
-                                    <div class="text-xl sm:text-3xl font-black text-brand-accent font-mono">B2B</div>
-                                    <div class="text-sm font-bold text-slate-500 mt-1">فروش همکاری</div>
-                                </div>
-                                <div>
-                                    <div class="text-xl sm:text-3xl font-black text-slate-500 font-mono">OEM</div>
-                                    <div class="text-[10px] sm:text-xs text-slate-500 mt-1">جستجوی کد فنی</div>
-                                </div>
-                            </div>
-
-                            <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
-                                <a href="#vehicle-finder" class="px-7 py-3.5 rounded-lg bg-brand-accent hover:bg-brand-hover text-ink font-bold shadow-glow-yellow flex items-center gap-3 transition-all hover:scale-[1.02] active:scale-[.98]">
-                                    <i class="fa-solid fa-car-side"></i>
-                                    <span>انتخاب خودرو و قطعه</span>
-                                </a>
-                                <a href="#wholesale" class="px-6 py-3.5 rounded-lg bg-white hover:bg-gray-100 border border-gray-200 hover:border-slate-600 text-ink font-semibold flex items-center gap-2 transition-colors">
-                                    <i class="fa-solid fa-truck-ramp-box text-brand-accent"></i>
-                                    <span>خرید عمده</span>
-                                </a>
+                        <!-- DESKTOP CAPTION -->
+                        <div class="hidden h-full max-w-xl lg:ml-auto lg:flex lg:max-w-[520px] lg:flex-col lg:justify-center lg:pr-4 xl:max-w-xl xl:pr-10">
+                            <div :key="activeHeroSlide" class="fade-in max-w-full text-right">
+                                <span class="inline-flex items-center gap-2 rounded-full border border-brand-accent/30 bg-[rgba(255,255,255,0.1)] px-3 py-1.5 text-[11px] font-bold text-brand-accent backdrop-blur-sm">
+                                    <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-accent"></span>
+                                    {{ activeHero.eyebrow }}
+                                </span>
+                                <h1 class="mt-5 text-4xl font-black leading-[1.35] text-[#ffffff] xl:text-5xl">
+                                    {{ activeHero.title }}
+                                </h1>
+                                <p class="mt-4 max-w-lg text-sm leading-relaxed text-[#d7d7d7] xl:text-base">
+                                    {{ activeHero.description }}
+                                </p>
                             </div>
                         </div>
 
                         <!-- VEHICLE FINDER -->
-                        <div class="lg:col-span-5" id="vehicle-finder">
-                            <div class="rounded-2xl bg-white border border-gray-200 p-6 sm:p-7">
-                                <div class="flex items-center justify-between pb-4 border-b border-gray-200">
-                                    <div class="flex items-center gap-3">
-                                            <div class="w-8 h-8 rounded-lg bg-brand-accent/10 flex items-center justify-center text-brand-accent">
-                                                <i class="fa-solid fa-sliders text-sm"></i>
-                                            </div>
-                                            <div>
-                                                <h3 class="font-bold text-ink text-sm">یافتن سریع قطعه</h3>
-                                                <p class="text-[11px] text-slate-500">خودرو را انتخاب کنید</p>
-                                            </div>
+                        <div
+                            id="vehicle-finder"
+                            class="absolute inset-x-4 bottom-4 z-20 sm:inset-x-6 sm:bottom-6 lg:inset-x-auto lg:bottom-auto lg:left-8 lg:top-1/2 lg:w-[360px] lg:-translate-y-1/2 xl:left-10 xl:w-[420px]"
+                        >
+                            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:p-5 lg:p-6">
+                                <div class="flex items-center justify-between gap-3 border-b border-gray-200 pb-3">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-accent/15 text-brand-accent">
+                                            <i class="fa-solid fa-sliders text-sm"></i>
                                         </div>
-                                    <span class="hidden sm:inline text-[10px] font-mono text-cyan-400 bg-cyan-950/50 border border-cyan-800/30 px-2 py-0.5 rounded">Smart Match</span>
+                                        <div>
+                                            <h2 class="text-sm font-black text-ink">یافتن سریع قطعه</h2>
+                                            <p class="text-[11px] text-slate-500">خودرو را انتخاب کنید</p>
+                                        </div>
+                                    </div>
+                                    <span class="hidden shrink-0 rounded border border-brand-accent/30 bg-brand-accent/10 px-2 py-0.5 text-[10px] font-bold text-brand-accent sm:inline">انتخاب هوشمند</span>
                                 </div>
 
-                                <form class="space-y-3 mt-5" @submit.prevent="onVfSubmit">
+                                <form class="mt-4 space-y-2.5" @submit.prevent="onVfSubmit">
                                     <div>
-                                        <label class="block text-[11px] font-semibold text-slate-500 mb-1">۱. کمپانی سازنده</label>
+                                        <label class="mb-1 block text-[10px] font-semibold text-slate-500 sm:text-[11px]">۱. کمپانی سازنده</label>
                                         <div class="relative">
-                                            <select v-model="vfBrand" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer min-h-[44px]" required @change="onVfBrandChange">
+                                            <select v-model="vfBrand" class="min-h-[44px] w-full cursor-pointer appearance-none rounded-lg border border-gray-200 bg-white px-2.5 py-2.5 text-[12px] text-ink focus:border-brand-accent focus:outline-none sm:px-3 sm:text-sm" required @change="onVfBrandChange">
                                                 <option value="">{{ vfBrandsLoading ? 'بارگذاری...' : 'انتخاب کمپانی' }}</option>
                                                 <option v-for="b in vehicleBrands" :key="b.id" :value="b.id">{{ b.name }}</option>
                                             </select>
-                                            <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
+                                            <i class="fa-solid fa-chevron-down pointer-events-none absolute left-2.5 top-3.5 text-[10px] text-slate-500 sm:left-3"></i>
                                         </div>
                                     </div>
 
                                     <div class="grid grid-cols-2 gap-2.5">
                                         <div>
-                                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">۲. مدل</label>
+                                            <label class="mb-1 block text-[10px] font-semibold text-slate-500 sm:text-[11px]">۲. مدل</label>
                                             <div class="relative">
-                                                <select v-model="vfModel" :disabled="!vfBrand || vfModelsLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]" required @change="onVfModelChange">
+                                                <select v-model="vfModel" :disabled="!vfBrand || vfModelsLoading" class="min-h-[44px] w-full cursor-pointer appearance-none rounded-lg border border-gray-200 bg-white px-2.5 py-2.5 text-[12px] text-ink focus:border-brand-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:text-sm" required @change="onVfModelChange">
                                                     <option value="">{{ vfModelsLoading ? 'بارگذاری...' : (vfBrand ? 'انتخاب مدل' : '—') }}</option>
                                                     <option v-for="m in vehicleModels" :key="m.id" :value="m.id">{{ m.name }}</option>
                                                 </select>
-                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
+                                                <i class="fa-solid fa-chevron-down pointer-events-none absolute left-2.5 top-3.5 text-[10px] text-slate-500 sm:left-3"></i>
                                             </div>
                                         </div>
                                         <div>
-                                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">۳. نسل</label>
+                                            <label class="mb-1 block text-[10px] font-semibold text-slate-500 sm:text-[11px]">۳. نسل</label>
                                             <div class="relative">
-                                                <select v-model="vfGeneration" :disabled="!vfModel || vfGenerationsLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]" @change="onVfGenerationChange">
+                                                <select v-model="vfGeneration" :disabled="!vfModel || vfGenerationsLoading" class="min-h-[44px] w-full cursor-pointer appearance-none rounded-lg border border-gray-200 bg-white px-2.5 py-2.5 text-[12px] text-ink focus:border-brand-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:text-sm" @change="onVfGenerationChange">
                                                     <option value="">{{ vfGenerationsLoading ? 'بارگذاری...' : (vfModel ? 'انتخاب نسل' : '—') }}</option>
                                                     <option v-for="g in vehicleGenerations" :key="g.id" :value="g.id">{{ g.name }}{{ g.year_start ? ` (${g.year_start})` : '' }}</option>
                                                 </select>
-                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
+                                                <i class="fa-solid fa-chevron-down pointer-events-none absolute left-2.5 top-3.5 text-[10px] text-slate-500 sm:left-3"></i>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div class="grid grid-cols-2 gap-2.5">
                                         <div>
-                                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">۴. تیپ</label>
+                                            <label class="mb-1 block text-[10px] font-semibold text-slate-500 sm:text-[11px]">۴. تیپ</label>
                                             <div class="relative">
-                                                <select v-model="vfTrim" :disabled="!vfGeneration || vfTrimsLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]" @change="onVfTrimChange">
+                                                <select v-model="vfTrim" :disabled="!vfGeneration || vfTrimsLoading" class="min-h-[44px] w-full cursor-pointer appearance-none rounded-lg border border-gray-200 bg-white px-2.5 py-2.5 text-[12px] text-ink focus:border-brand-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:text-sm" @change="onVfTrimChange">
                                                     <option value="">{{ vfTrimsLoading ? 'بارگذاری...' : (vfGeneration ? 'انتخاب تیپ' : '—') }}</option>
                                                     <option v-for="t in vehicleTrims" :key="t.id" :value="t.id">{{ t.name }}</option>
                                                 </select>
-                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
+                                                <i class="fa-solid fa-chevron-down pointer-events-none absolute left-2.5 top-3.5 text-[10px] text-slate-500 sm:left-3"></i>
                                             </div>
                                         </div>
                                         <div>
-                                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">۵. موتور</label>
+                                            <label class="mb-1 block text-[10px] font-semibold text-slate-500 sm:text-[11px]">۵. موتور</label>
                                             <div class="relative">
-                                                <select v-model="vfEngine" :disabled="!vfTrim || vfEnginesLoading" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-ink focus:border-brand-accent focus:outline-none appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]" @change="onVfEngineChange">
+                                                <select v-model="vfEngine" :disabled="!vfTrim || vfEnginesLoading" class="min-h-[44px] w-full cursor-pointer appearance-none rounded-lg border border-gray-200 bg-white px-2.5 py-2.5 text-[12px] text-ink focus:border-brand-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:text-sm" @change="onVfEngineChange">
                                                     <option value="">{{ vfEnginesLoading ? 'بارگذاری...' : (vfTrim ? 'انتخاب موتور' : '—') }}</option>
                                                     <option v-for="e in vehicleEngines" :key="e.id" :value="e.id">{{ e.name }}</option>
                                                 </select>
-                                                <i class="fa-solid fa-chevron-down absolute left-3 top-3.5 text-[10px] text-slate-500 pointer-events-none"></i>
+                                                <i class="fa-solid fa-chevron-down pointer-events-none absolute left-2.5 top-3.5 text-[10px] text-slate-500 sm:left-3"></i>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <button type="submit" class="w-full py-3.5 rounded-lg bg-brand-accent hover:bg-brand-hover text-ink font-bold text-sm shadow-glow-yellow flex items-center justify-center gap-2 transition-all active:scale-[.98] min-h-[48px]">
+                                    <button type="submit" class="mt-1 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-brand-accent py-3.5 text-sm font-bold text-ink shadow-glow-yellow transition-all hover:bg-brand-hover active:scale-[.98]">
                                         <i class="fa-solid fa-magnifying-glass-chart"></i>
                                         نمایش قطعات سازگار
                                     </button>
                                 </form>
 
-                                <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 pt-3 mt-3 border-t border-gray-200/50">
-                                    <span class="flex items-center gap-1"><i class="fa-solid fa-check-double text-brand-accent"></i> بررسی سازگاری</span>
-                                    <span class="flex items-center gap-1"><i class="fa-solid fa-arrow-rotate-left text-brand-accent"></i> امکان مرجوعی</span>
+                                <div class="mt-3 flex items-center justify-between gap-2 border-t border-gray-200 pt-3 text-[10px] font-semibold text-slate-600">
+                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-check-double text-brand-accent"></i> بررسی سازگاری</span>
+                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-arrow-rotate-left text-brand-accent"></i> امکان مرجوعی</span>
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- SLIDER CONTROLS -->
+                    <div class="absolute right-4 top-4 z-30 flex items-center gap-2 sm:right-6 sm:top-6 lg:right-8 lg:top-8">
+                        <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,255,255,0.25)] bg-[rgba(0,0,0,0.32)] text-[#ffffff] backdrop-blur-sm transition-colors hover:bg-[rgba(0,0,0,0.52)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent" aria-label="اسلاید قبلی" @click="prevHeroSlide">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
+                        <span class="min-w-[3.5rem] rounded-full border border-[rgba(255,255,255,0.2)] bg-[rgba(0,0,0,0.32)] px-2.5 py-1.5 text-center text-[11px] font-bold text-[#ffffff] backdrop-blur-sm">
+                            {{ toPersianNumber(activeHeroSlide + 1) }} / {{ toPersianNumber(heroSlides.length) }}
+                        </span>
+                        <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(255,255,255,0.25)] bg-[rgba(0,0,0,0.32)] text-[#ffffff] backdrop-blur-sm transition-colors hover:bg-[rgba(0,0,0,0.52)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent" aria-label="اسلاید بعدی" @click="nextHeroSlide">
+                            <i class="fa-solid fa-chevron-left text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div class="absolute bottom-8 right-8 z-20 hidden items-center gap-2 lg:flex" role="tablist" aria-label="انتخاب اسلاید">
+                        <button
+                            v-for="(slide, index) in heroSlides"
+                            :key="`dot-${slide.image}`"
+                            type="button"
+                            role="tab"
+                            :aria-label="`اسلاید ${toPersianNumber(index + 1)}`"
+                            :aria-selected="index === activeHeroSlide"
+                            class="h-2.5 rounded-full transition-all duration-300"
+                            :class="index === activeHeroSlide ? 'w-8 bg-brand-accent' : 'w-2.5 bg-[rgba(255,255,255,0.4)] hover:bg-[rgba(255,255,255,0.7)]'"
+                            @click="setHeroSlide(index)"
+                        ></button>
                     </div>
                 </div>
             </section>
@@ -449,120 +606,160 @@ onUnmounted(() => {
             </section>
 
             <!-- CATEGORIES -->
-            <section id="categories" class="py-14">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
-                        <div>
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-brand-accent/10 text-brand-accent border border-brand-accent/20 mb-2">
-                                <i class="fa-solid fa-layer-group ml-1.5"></i> دسته‌بندی قطعات
-                            </span>
-                            <h2 class="text-xl sm:text-2xl font-black text-ink">قطعات مورد نیاز خودروی شما</h2>
-                            <p class="text-xs text-slate-500 mt-2">از سیستم ترمز تا قطعات موتوری و برقی</p>
+            <section id="categories" class="relative overflow-hidden py-16 sm:py-20">
+                <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,205,0,0.12),transparent_38%)]"></div>
+                <div class="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-brand-accent/5 blur-3xl"></div>
+
+                <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div class="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+                        <div class="max-w-2xl">
+                            <div class="mb-3 flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-brand-accent/20 bg-brand-accent/10 px-2.5 py-1 text-[11px] font-bold text-brand-accent">
+                                    <i class="fa-solid fa-layer-group"></i>
+                                    دسته‌بندی قطعات
+                                </span>
+                                <span class="rounded-full border border-gray-200 bg-white/70 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+                                    {{ toPersianNumber(categoryItems.length) }} دسته‌بندی اصلی
+                                </span>
+                            </div>
+                            <h2 class="text-2xl font-black leading-tight text-ink sm:text-3xl lg:text-4xl">قطعات مورد نیاز خودروی شما</h2>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-500">از سیستم ترمز تا قطعات موتوری و برقی؛ مسیر خرید قطعه را سریع‌تر پیدا کنید.</p>
                         </div>
-                        <a href="/store" class="inline-flex items-center gap-1.5 text-sm font-bold text-brand-accent hover:text-brand-hover transition-colors">
-                            مشاهده همه <i class="fa-solid fa-arrow-left text-xs"></i>
+                        <a href="/store" class="inline-flex w-fit items-center gap-2 rounded-full border border-brand-accent/40 bg-white/70 px-4 py-2.5 text-sm font-bold text-ink shadow-sm backdrop-blur transition-all hover:-translate-y-0.5 hover:border-brand-accent hover:bg-brand-accent hover:shadow-glow-yellow">
+                            مشاهده همه
+                            <i class="fa-solid fa-arrow-left text-xs"></i>
                         </a>
                     </div>
 
-                    <div v-if="categoriesLoading" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div v-for="i in 6" :key="i" class="rounded-xl bg-white border border-gray-200 animate-pulse min-h-[180px]"></div>
+                    <div v-if="categoriesLoading" class="flex flex-wrap justify-center gap-3 sm:gap-4">
+                        <div v-for="i in 9" :key="i" class="min-h-[188px] w-[calc(50%-0.375rem)] animate-pulse rounded-[1.4rem] border border-[rgba(255,255,255,0.6)] bg-[rgba(255,255,255,0.55)] sm:min-h-[200px] sm:w-[calc(33.333%-0.667rem)] lg:w-[calc(25%-0.75rem)]"></div>
                     </div>
 
-                    <div v-else-if="categories.length" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <a v-if="categories[0]" :href="`/store?category=${encodeURIComponent(categories[0].slug)}`" class="col-span-2 min-h-[220px] rounded-xl p-6 bg-white border border-gray-200 hover:border-brand-accent/40 transition-all relative overflow-hidden group">
-                            <div class="absolute -left-8 -bottom-8 w-40 h-40 bg-brand-accent/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500"></div>
-                            <div class="relative z-10 h-full flex flex-col justify-between">
-                                <span class="inline-flex self-start px-2 py-0.5 rounded text-[10px] font-bold bg-brand-accent/15 text-brand-accent border border-brand-accent/20">پرفروش</span>
-                                <div>
-                                    <h3 class="text-xl sm:text-2xl font-black text-ink">{{ categories[0].name }}</h3>
-                                    <p class="text-xs text-slate-500 mt-1">{{ categories[0].children?.length ? `${categories[0].children.length} زیرمجموعه` : 'مشاهده محصولات' }}</p>
-                                </div>
-                            </div>
-                        </a>
+                    <div v-else-if="categoryItems.length" class="flex flex-wrap justify-center gap-3 sm:gap-4">
+                        <a
+                            v-for="(cat, index) in categoryItems"
+                            :key="cat.slug || cat.id"
+                            :href="`/store?category=${encodeURIComponent(cat.slug)}`"
+                            class="home-category-card group relative flex min-h-[188px] w-[calc(50%-0.375rem)] flex-col overflow-hidden rounded-[1.4rem] border border-[rgba(255,255,255,0.55)] p-3 sm:min-h-[200px] sm:w-[calc(33.333%-0.667rem)] sm:p-4 lg:w-[calc(25%-0.75rem)]"
+                        >
+                            <img
+                                :src="categoryImage(cat, index)"
+                                :alt="`قطعات ${cat.name}`"
+                                class="home-category-card__image pointer-events-none absolute inset-0 h-full w-full object-cover"
+                                loading="lazy"
+                            />
+                            <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.3),rgba(255,255,255,0.06)_38%,rgba(15,23,42,0.18))]"></div>
+                            <div class="pointer-events-none absolute inset-0 bg-[rgba(255,255,255,0.14)] backdrop-blur-[2px]"></div>
+                            <span class="home-category-card__glare pointer-events-none absolute inset-0"></span>
 
-                        <a v-for="cat in categories.slice(1, 3)" :key="cat.slug" :href="`/store?category=${encodeURIComponent(cat.slug)}`" class="min-h-[220px] rounded-xl p-5 bg-white border border-gray-200 hover:border-cyan-500/40 transition-all flex flex-col justify-between">
-                            <div class="flex justify-between items-start">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950/50 text-cyan-400 border border-cyan-800/30">{{ cat.children?.length ? `${cat.children.length} زیرمجموعه` : 'دسته‌بندی' }}</span>
-                                <i class="fa-solid fa-layer-group text-slate-500 group-hover:text-cyan-400 transition-colors"></i>
+                            <div class="relative z-10 flex items-start justify-between gap-2">
+                                <span class="flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.55)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_6px_16px_rgba(17,24,39,0.14)] backdrop-blur-md transition-transform duration-500 group-hover:-rotate-6 group-hover:scale-110 sm:h-12 sm:w-12" :class="categoryAccent(index)">
+                                    <i :class="categoryIcon(cat)" class="text-base sm:text-lg"></i>
+                                </span>
+                                <span class="rounded-full border border-[rgba(255,255,255,0.65)] bg-[rgba(255,255,255,0.45)] px-2 py-0.5 text-[10px] font-bold text-[#334155] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-md">
+                                    {{ cat.children?.length ? `${toPersianNumber(cat.children.length)} زیردسته` : 'دسته‌بندی' }}
+                                </span>
                             </div>
-                            <div>
-                                <h3 class="text-base font-bold text-ink">{{ cat.name }}</h3>
-                                <span class="text-[11px] text-brand-accent mt-1 inline-flex items-center gap-1">مشاهده محصولات <i class="fa-solid fa-arrow-left text-[9px]"></i></span>
-                            </div>
-                        </a>
 
-                        <a v-for="cat in categories.slice(3, 7)" :key="cat.slug" :href="`/store?category=${encodeURIComponent(cat.slug)}`" class="rounded-xl p-4 bg-blush border border-gray-200 hover:border-brand-accent/40 transition-all">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-brand-accent shrink-0">
-                                    <i class="fa-solid fa-layer-group text-sm"></i>
-                                </div>
-                                <div>
-                                    <h4 class="font-bold text-ink text-xs">{{ cat.name }}</h4>
-                                    <span class="text-[10px] text-slate-500">{{ cat.children?.length ? `${cat.children.length} زیرمجموعه` : 'مشاهده' }}</span>
+                            <div class="relative z-10 mt-auto pt-8">
+                                <div class="rounded-[1.05rem] border border-[rgba(255,255,255,0.55)] bg-[rgba(255,255,255,0.38)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-md transition-colors duration-300 group-hover:bg-[rgba(255,255,255,0.52)]">
+                                    <h3 class="text-[13px] font-black leading-snug text-[#111827] sm:text-sm">{{ cat.name }}</h3>
+                                    <span class="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-[#475569] transition-colors group-hover:text-[#111827]">
+                                        مشاهده قطعات
+                                        <i class="fa-solid fa-arrow-left text-[9px] transition-transform duration-300 group-hover:-translate-x-1"></i>
+                                    </span>
                                 </div>
                             </div>
+
+                            <span class="pointer-events-none absolute inset-x-3 bottom-0 h-px bg-gradient-to-l from-transparent via-[rgba(255,255,255,0.85)] to-transparent"></span>
                         </a>
                     </div>
                 </div>
             </section>
 
             <!-- FEATURED PRODUCTS -->
-            <section id="products" class="py-14 bg-white/50 border-y border-gray-200">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-                        <div>
-                            <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-brand-accent/10 text-brand-accent border border-brand-accent/20 inline-block mb-2">محصولات منتخب</span>
-                            <h2 class="text-2xl sm:text-3xl font-black text-ink">قطعات پرتقاضای بازار</h2>
+            <section id="products" class="relative overflow-hidden border-y border-gray-200 bg-gradient-to-b from-cream via-white/60 to-cream py-16 sm:py-20">
+                <div class="pointer-events-none absolute right-0 top-0 h-96 w-96 rounded-full bg-brand-accent/5 blur-3xl"></div>
+                <div class="pointer-events-none absolute -left-20 bottom-0 h-80 w-80 rounded-full border border-brand-accent/10"></div>
+                <div class="pointer-events-none absolute left-1/3 top-20 hidden h-44 w-44 rotate-12 rounded-[2rem] border border-gray-200/60 lg:block"></div>
+
+                <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div class="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+                        <div class="max-w-2xl">
+                            <span class="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-brand-accent/20 bg-brand-accent/10 px-2.5 py-1 text-[11px] font-bold text-brand-accent">
+                                <i class="fa-solid fa-fire-flame-curved"></i>
+                                پرفروش‌ترین‌ها
+                            </span>
+                            <h2 class="text-2xl font-black leading-tight text-ink sm:text-3xl lg:text-4xl">پرفروش‌ترین قطعات بازار</h2>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-500">گلچینی از پرتقاضاترین قطعات خودرو با قیمت شفاف و امکان مشاهده سریع.</p>
                         </div>
-                        <a href="/store" class="inline-flex items-center gap-1.5 text-sm font-bold text-brand-accent hover:text-brand-hover transition-colors">
-                            مشاهده همه <i class="fa-solid fa-arrow-left text-xs"></i>
+                        <a href="/store" class="inline-flex w-fit items-center gap-2 rounded-full border border-brand-accent/40 bg-white/70 px-4 py-2.5 text-sm font-bold text-ink shadow-sm backdrop-blur transition-all hover:-translate-y-0.5 hover:border-brand-accent hover:bg-brand-accent hover:text-[#1a1a1a] hover:shadow-glow-yellow">
+                            مشاهده همه محصولات
+                            <i class="fa-solid fa-arrow-left text-xs"></i>
                         </a>
                     </div>
 
-                    <div v-if="featuredLoading" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div v-for="i in 8" :key="i" class="rounded-xl bg-white border border-gray-200 animate-pulse">
-                            <div class="aspect-square bg-gray-100 rounded-t-xl"></div>
-                            <div class="p-3 space-y-2">
-                                <div class="h-2.5 bg-gray-100 rounded w-3/4"></div>
-                                <div class="h-3.5 bg-gray-100 rounded w-1/2"></div>
+                    <div v-if="featuredLoading" class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+                        <div v-for="i in 8" :key="i" class="animate-pulse overflow-hidden rounded-2xl border border-gray-200 bg-white/70">
+                            <div class="aspect-square bg-sand"></div>
+                            <div class="space-y-2 p-3">
+                                <div class="h-2.5 w-3/4 rounded bg-gray-100"></div>
+                                <div class="h-3.5 w-1/2 rounded bg-gray-100"></div>
+                                <div class="h-8 w-full rounded-lg bg-gray-100"></div>
                             </div>
                         </div>
                     </div>
 
-                    <div v-else-if="featuredError" class="text-center py-12">
-                        <i class="fa-solid fa-circle-exclamation text-3xl text-slate-500 mb-3"></i>
-                        <p class="text-slate-500 text-xs">{{ featuredError }}</p>
+                    <div v-else-if="featuredError" class="rounded-2xl border border-gray-200 bg-white/60 py-12 text-center">
+                        <i class="fa-solid fa-circle-exclamation mb-3 text-3xl text-slate-500"></i>
+                        <p class="text-xs text-slate-500">{{ featuredError }}</p>
                     </div>
 
-                    <div v-else-if="!featuredProducts.length" class="text-center py-12">
-                        <i class="fa-solid fa-box-open text-3xl text-slate-500 mb-3"></i>
-                        <p class="text-slate-500 text-xs">محصولی یافت نشد.</p>
+                    <div v-else-if="!featuredProducts.length" class="rounded-2xl border border-gray-200 bg-white/60 py-12 text-center">
+                        <i class="fa-solid fa-box-open mb-3 text-3xl text-slate-500"></i>
+                        <p class="text-xs text-slate-500">محصولی یافت نشد.</p>
                     </div>
 
-                    <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                         <a
                             v-for="product in featuredProducts"
                             :key="product.id"
                             :href="`/products/${product.id}`"
-                            class="rounded-xl bg-white border border-gray-200 hover:border-brand-accent/40 transition-all p-3 flex flex-col group"
+                            class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white/80 p-3 transition-all duration-300 hover:-translate-y-1 hover:border-brand-accent/45 hover:shadow-[0_20px_50px_rgba(0,0,0,0.09)]"
                         >
-                            <div class="relative rounded-lg bg-sand p-3 flex items-center justify-center overflow-hidden mb-3 aspect-square">
-                                <span v-if="product.compare_at_price" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-600 text-ink">تخفیف</span>
-                                <span v-if="product.in_stock" class="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-ink">موجود</span>
-                                <span v-else class="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-600 text-ink">ناموجود</span>
-                                <img v-if="productImage(product)" :src="productImage(product)" :alt="product.name" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300" @error="onImgError($event)" />
-                                <i v-else class="fa-solid fa-box text-4xl text-slate-500"></i>
+                            <div class="relative mb-3 flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-sand via-blush to-white p-3">
+                                <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,205,0,0.16),transparent_48%)]"></div>
+                                <span v-if="product.compare_at_price" class="absolute right-2 top-2 z-20 rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold text-[#ffffff]">تخفیف</span>
+                                <span v-if="product.in_stock" class="absolute left-2 top-2 z-20 rounded bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-[#ffffff]">موجود</span>
+                                <span v-else class="absolute left-2 top-2 z-20 rounded bg-slate-600 px-1.5 py-0.5 text-[9px] font-bold text-[#ffffff]">ناموجود</span>
+                                <img
+                                    v-if="productImage(product)"
+                                    :src="productImage(product)"
+                                    :alt="product.name"
+                                    class="relative z-10 max-h-full max-w-full object-contain transition-transform duration-500 group-hover:scale-105"
+                                    loading="lazy"
+                                    @error="onImgError($event)"
+                                />
+                                <i v-else class="fa-solid fa-box relative z-10 text-4xl text-slate-500"></i>
+                                <span class="absolute inset-x-3 bottom-3 z-20 translate-y-2 rounded-lg bg-[rgba(15,15,15,0.82)] py-1.5 text-center text-[10px] font-bold text-[#ffffff] opacity-0 backdrop-blur transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">مشاهده سریع</span>
                             </div>
-                            <div v-if="product.sku" class="text-[10px] font-mono text-slate-500 mb-0.5">SKU: {{ product.sku }}</div>
-                            <h3 class="font-bold text-ink text-xs leading-snug group-hover:text-brand-accent transition-colors line-clamp-2">{{ product.name }}</h3>
-                            <div class="mt-auto pt-2">
-                                <div v-if="product.compare_at_price" class="flex items-end gap-2">
-                                    <span class="text-[10px] text-slate-500 line-through font-mono">{{ formatPrice(product.compare_at_price) }}</span>
-                                    <span class="text-sm font-black text-brand-accent font-mono">{{ formatPrice(product.price) }} <span class="text-[10px] font-sans text-slate-500">تومان</span></span>
+
+                            <div v-if="product.sku" class="mb-0.5 font-mono text-[10px] text-slate-500">SKU: {{ product.sku }}</div>
+                            <h3 class="line-clamp-2 text-xs font-bold leading-snug text-ink transition-colors group-hover:text-brand-accent">{{ product.name }}</h3>
+
+                            <div class="mt-auto pt-2.5">
+                                <div v-if="product.compare_at_price" class="flex flex-wrap items-end gap-x-2 gap-y-0.5">
+                                    <span class="font-mono text-[10px] text-slate-500 line-through">{{ formatPrice(product.compare_at_price) }}</span>
+                                    <span class="font-mono text-sm font-black text-brand-accent">{{ formatPrice(product.price) }} <span class="font-sans text-[10px] text-slate-500">تومان</span></span>
                                 </div>
                                 <div v-else>
-                                    <span class="text-sm font-black text-ink font-mono">{{ formatPrice(product.price) }} <span class="text-[10px] font-sans text-slate-500">تومان</span></span>
+                                    <span class="font-mono text-sm font-black text-ink">{{ formatPrice(product.price) }} <span class="font-sans text-[10px] text-slate-500">تومان</span></span>
                                 </div>
+
+                                <span class="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-[10px] font-bold text-ink transition-all group-hover:border-brand-accent group-hover:bg-brand-accent group-hover:text-[#1a1a1a]">
+                                    مشاهده قطعه
+                                    <i class="fa-solid fa-arrow-left text-[9px]"></i>
+                                </span>
                             </div>
                         </a>
                     </div>
@@ -806,4 +1003,58 @@ select { background-image: none; }
 input::placeholder { opacity: 0.75; }
 
 :focus-visible { outline: 2px solid #FFCD00; outline-offset: 2px; }
+
+/* Homepage category cards — glass + 3D */
+.home-category-card {
+    transform-style: preserve-3d;
+    transition: transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .5s ease, border-color .3s ease;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .7) inset,
+        0 12px 24px -18px rgba(17, 24, 39, .5),
+        0 28px 52px -34px rgba(17, 24, 39, .55);
+    will-change: transform;
+}
+
+.home-category-card:hover {
+    transform: perspective(1100px) rotateX(3.5deg) rotateY(-3.5deg) translateY(-8px);
+    border-color: rgba(255, 255, 255, .92);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, .85) inset,
+        0 22px 40px -20px rgba(17, 24, 39, .48),
+        0 44px 76px -40px rgba(17, 24, 39, .6);
+}
+
+.home-category-card__image {
+    transform: scale(1.02);
+    transition: transform .8s cubic-bezier(.2, .8, .2, 1);
+}
+
+.home-category-card:hover .home-category-card__image {
+    transform: scale(1.08);
+}
+
+.home-category-card__glare {
+    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .55) 48%, rgba(255, 255, 255, .15) 55%, transparent 65%);
+    transform: translateX(-80%) rotate(6deg);
+    opacity: 0;
+    transition: transform .9s ease, opacity .5s ease;
+    mix-blend-mode: screen;
+}
+
+.home-category-card:hover .home-category-card__glare {
+    transform: translateX(80%) rotate(6deg);
+    opacity: .55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-category-card,
+    .home-category-card__image,
+    .home-category-card__glare {
+        transition: none;
+    }
+
+    .home-category-card:hover {
+        transform: none;
+    }
+}
 </style>

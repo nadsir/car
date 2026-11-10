@@ -172,6 +172,30 @@ function decodeSlugFromPath(segment) {
     }
 }
 
+// Related articles state
+const relatedArticles = ref([]);
+const relatedLoading = ref(false);
+
+async function fetchRelatedArticles() {
+    if (!article.value?.categories?.length) return;
+    relatedLoading.value = true;
+    try {
+        const firstCategory = article.value.categories[0];
+        const { data } = await axios.get('/api/articles', {
+            params: { page: 1, category: firstCategory.slug },
+        });
+        const allArticles = data.data || [];
+        // Filter out current article, limit to 4
+        relatedArticles.value = allArticles
+            .filter(a => a.id !== article.value.id)
+            .slice(0, 4);
+    } catch {
+        relatedArticles.value = [];
+    } finally {
+        relatedLoading.value = false;
+    }
+}
+
 async function fetchArticle() {
     const match = location.pathname.match(/\/articles\/([^/]+)\/?$/);
     if (!match) { error.value = 'مقاله مورد نظر پیدا نشد.'; loading.value = false; return; }
@@ -179,6 +203,7 @@ async function fetchArticle() {
     try {
         const { data } = await axios.get(`/api/articles/${encodeURIComponent(slug)}`);
         article.value = data.data || data;
+        await fetchRelatedArticles();
     } catch (e) {
         error.value = e.response?.status === 404 ? 'مقاله مورد نظر پیدا نشد.' : 'خطا در دریافت اطلاعات مقاله.';
     } finally {
@@ -218,6 +243,12 @@ const categories = computed(() => article.value?.categories || []);
 function goBack() {
     if (window.history.length > 1) window.history.back();
     else window.location.href = '/articles';
+}
+
+function relatedArticleImage(a) {
+    if (!a.featured_image) return '';
+    if (/^https?:\/\//i.test(a.featured_image)) return a.featured_image;
+    return `/storage/${a.featured_image.replace(/^\/?storage\//, '')}`;
 }
 
 onMounted(async () => {
@@ -272,147 +303,228 @@ onUnmounted(() => {
             </div>
 
             <!-- ARTICLE -->
-            <article v-else-if="article" class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <article v-else-if="article" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
                 <!-- Breadcrumb -->
-                <nav class="mb-8 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 max-w-[46rem] mx-auto">
+                <nav class="mb-8 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
                     <a href="/" class="hover:text-brand-accent transition-colors">خانه</a>
                     <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
                     <a href="/articles" class="hover:text-brand-accent transition-colors">مجله</a>
+                    <template v-if="categories.length">
+                        <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
+                        <a :href="`/store?category=${encodeURIComponent(categories[0].slug)}`" class="hover:text-brand-accent transition-colors">{{ categories[0].name }}</a>
+                    </template>
                     <i class="fa-solid fa-chevron-left text-[8px] text-slate-400"></i>
-                    <span class="text-ink font-semibold max-w-[12rem] truncate">{{ article.title }}</span>
+                    <span class="text-ink font-semibold max-w-[16rem] truncate">{{ article.title }}</span>
                 </nav>
 
-                <!-- Header -->
-                <header class="mb-10 max-w-[46rem] mx-auto">
-                    <div class="mb-5 flex flex-wrap items-center gap-2">
-                        <span class="hidden sm:flex items-center gap-2 pl-2 text-[10px] font-bold text-slate-400">
-                            <span class="w-1.5 h-1.5 rotate-45 bg-brand-accent inline-block"></span>
-                            مجله توربوپارت
-                        </span>
-                        <a v-for="cat in categories" :key="cat.id" :href="`/store?category=${encodeURIComponent(cat.slug)}`" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-accent/25 text-brand-accent text-[10px] font-bold hover:bg-brand-accent/10 transition-colors">
-                            <span class="w-1 h-1 rotate-45 bg-brand-accent inline-block"></span>
-                            {{ cat.name }}
-                        </a>
-                    </div>
+                <!-- Two-column layout: main content + sidebar -->
+                <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-12">
 
-                    <h1 class="text-2xl sm:text-4xl lg:text-[3.25rem] font-black text-ink leading-[1.3] tracking-tight">{{ article.title }}</h1>
-                    <p v-if="article.excerpt" class="mt-5 text-sm sm:text-base lg:text-lg text-slate-500 leading-relaxed">{{ article.excerpt }}</p>
+                    <!-- Main content column -->
+                    <div class="min-w-0">
 
-                    <!-- Dateline -->
-                    <div class="mt-7 pt-5 border-t border-gray-200 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs text-slate-500">
-                        <div class="flex items-center gap-2.5">
-                            <div v-if="article.author" class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-accent to-amber-300 flex items-center justify-center text-[13px] font-bold text-ink shrink-0 ring-2 ring-brand-accent/30">
+                        <!-- Header -->
+                        <header class="mb-10">
+                            <div class="mb-5 flex flex-wrap items-center gap-2">
+                                <span class="hidden sm:flex items-center gap-2 pl-2 text-[10px] font-bold text-slate-400">
+                                    <span class="w-1.5 h-1.5 rotate-45 bg-brand-accent inline-block"></span>
+                                    مجله توربوپارت
+                                </span>
+                                <a v-for="cat in categories" :key="cat.id" :href="`/store?category=${encodeURIComponent(cat.slug)}`" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-accent/25 text-brand-accent text-[10px] font-bold hover:bg-brand-accent/10 transition-colors">
+                                    <span class="w-1 h-1 rotate-45 bg-brand-accent inline-block"></span>
+                                    {{ cat.name }}
+                                </a>
+                            </div>
+
+                            <h1 class="text-2xl sm:text-4xl lg:text-[3.25rem] font-black text-ink leading-[1.3] tracking-tight">{{ article.title }}</h1>
+                            <p v-if="article.excerpt" class="mt-5 text-sm sm:text-base lg:text-lg text-slate-500 leading-relaxed">{{ article.excerpt }}</p>
+
+                            <!-- Dateline -->
+                            <div class="mt-7 pt-5 border-t border-gray-200 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs text-slate-500">
+                                <div class="flex items-center gap-2.5">
+                                    <div v-if="article.author" class="w-9 h-9 rounded-full bg-gradient-to-br from-brand-accent to-amber-300 flex items-center justify-center text-[13px] font-bold text-ink shrink-0 ring-2 ring-brand-accent/30">
+                                        {{ article.author.name?.charAt(0) || 'م' }}
+                                    </div>
+                                    <div>
+                                        <div class="text-[11px] font-bold text-ink">{{ article.author?.name || 'تیم توربوپارت' }}</div>
+                                        <div class="text-[10px] text-slate-400">نویسنده</div>
+                                    </div>
+                                </div>
+                                <span class="hidden sm:inline-block w-1 h-1 rotate-45 bg-brand-accent"></span>
+                                <span class="inline-flex items-center gap-1.5">
+                                    <i class="fa-regular fa-calendar text-brand-accent"></i> {{ formatDate(article.published_at) }}
+                                </span>
+                                <span class="hidden sm:inline-block w-1 h-1 rotate-45 bg-brand-accent"></span>
+                                <span class="inline-flex items-center gap-1.5">
+                                    <i class="fa-regular fa-clock text-brand-accent"></i> {{ toPersianNumber(readingTime()) }} دقیقه مطالعه
+                                </span>
+                                <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] text-slate-600 hover:border-brand-accent/40 hover:text-brand-accent transition-colors" @click="onShare">
+                                    <i class="fa-solid fa-share-nodes"></i> اشتراک‌گذاری
+                                </button>
+                            </div>
+                        </header>
+
+                        <!-- Cover -->
+                        <figure v-if="articleImage()" class="mb-12 reveal relative">
+                            <div class="overflow-hidden rounded-xl ring-1 ring-gray-200 bg-gradient-to-br from-brand-accent/25 via-amber-100 to-sand aspect-[16/9] sm:aspect-[21/9]">
+                                <img :src="articleImage()" :alt="article.title" class="w-full h-full object-cover" @error="onImgError($event)" />
+                            </div>
+                            <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-accent/70 to-transparent"></div>
+                        </figure>
+
+                        <!-- Body -->
+                        <div v-html="article.content" class="article-body" />
+
+                        <!-- End of article signoff -->
+                        <div class="mt-12 mb-6 flex items-center gap-4">
+                            <span class="h-px flex-1 bg-gray-200"></span>
+                            <span class="text-[10px] font-bold text-slate-400 tracking-wide">پایان مقاله</span>
+                            <span class="serif text-lg text-brand-accent leading-none px-1">TP</span>
+                            <span class="h-px flex-1 bg-gray-200"></span>
+                        </div>
+
+                        <!-- Author box -->
+                        <div v-if="article.author" class="reveal rounded-xl border border-gray-200 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start gap-4 relative overflow-hidden">
+                            <div class="absolute right-0 top-0 bottom-0 w-1 bg-brand-accent hidden sm:block"></div>
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent to-amber-300 flex items-center justify-center font-black text-ink shrink-0 ring-2 ring-brand-accent/25">
                                 {{ article.author.name?.charAt(0) || 'م' }}
                             </div>
-                            <div>
-                                <div class="text-[11px] font-bold text-ink">{{ article.author?.name || 'تیم توربوپارت' }}</div>
-                                <div class="text-[10px] text-slate-400">نویسنده</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-sm font-black text-ink">{{ article.author.name }}</span>
+                                    <span class="px-2 py-0.5 rounded-md bg-brand-accent/10 text-brand-accent text-[10px] font-bold border border-brand-accent/20">نویسنده متخصص</span>
+                                </div>
+                                <p class="mt-1.5 text-xs text-slate-500 leading-relaxed">راهنمای تخصصی انتخاب قطعات خودرو در مجله توربوپارت؛ این مقاله با دقت فنی و منابع معتبر به قلم تیم توربوپارت تهیه شده است.</p>
                             </div>
                         </div>
-                        <span class="hidden sm:inline-block w-1 h-1 rotate-45 bg-brand-accent"></span>
-                        <span class="inline-flex items-center gap-1.5">
-                            <i class="fa-regular fa-calendar text-brand-accent"></i> {{ formatDate(article.published_at) }}
-                        </span>
-                        <span class="hidden sm:inline-block w-1 h-1 rotate-45 bg-brand-accent"></span>
-                        <span class="inline-flex items-center gap-1.5">
-                            <i class="fa-regular fa-clock text-brand-accent"></i> {{ toPersianNumber(readingTime()) }} دقیقه مطالعه
-                        </span>
-                        <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[11px] text-slate-600 hover:border-brand-accent/40 hover:text-brand-accent transition-colors" @click="onShare">
-                            <i class="fa-solid fa-share-nodes"></i> اشتراک‌گذاری
-                        </button>
-                    </div>
-                </header>
 
-                <!-- Cover -->
-                <figure v-if="articleImage()" class="mb-12 reveal relative">
-                    <div class="overflow-hidden rounded-xl ring-1 ring-gray-200 bg-gradient-to-br from-brand-accent/25 via-amber-100 to-sand aspect-[16/9] sm:aspect-[21/9]">
-                        <img :src="articleImage()" :alt="article.title" class="w-full h-full object-cover" @error="onImgError($event)" />
-                    </div>
-                    <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-accent/70 to-transparent"></div>
-                </figure>
-
-                <!-- Reading column -->
-                <div class="max-w-[46rem] mx-auto">
-
-                    <!-- Body -->
-                    <div v-html="article.content" class="article-body" />
-
-                    <!-- End of article signoff -->
-                    <div class="mt-12 mb-6 flex items-center gap-4">
-                        <span class="h-px flex-1 bg-gray-200"></span>
-                        <span class="text-[10px] font-bold text-slate-400 tracking-wide">پایان مقاله</span>
-                        <span class="serif text-lg text-brand-accent leading-none px-1">TP</span>
-                        <span class="h-px flex-1 bg-gray-200"></span>
-                    </div>
-
-                    <!-- Author box -->
-                    <div v-if="article.author" class="reveal rounded-xl border border-gray-200 bg-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start gap-4 relative overflow-hidden">
-                        <div class="absolute right-0 top-0 bottom-0 w-1 bg-brand-accent hidden sm:block"></div>
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-brand-accent to-amber-300 flex items-center justify-center font-black text-ink shrink-0 ring-2 ring-brand-accent/25">
-                            {{ article.author.name?.charAt(0) || 'م' }}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="text-sm font-black text-ink">{{ article.author.name }}</span>
-                                <span class="px-2 py-0.5 rounded-md bg-brand-accent/10 text-brand-accent text-[10px] font-bold border border-brand-accent/20">نویسنده متخصص</span>
+                        <!-- Calm end CTA -->
+                        <div class="mt-8 reveal rounded-xl border border-gray-200 bg-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-road text-brand-accent"></i>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] font-bold text-slate-400 tracking-wide mb-1">ادامه مسیر در توربوپارت</div>
+                                    <h2 class="text-base sm:text-lg font-black text-ink">راهنمای دیگری خواندید؟ حالا قطعه مناسب را پیدا کنید.</h2>
+                                    <p class="text-xs text-slate-500 mt-1">با انتخاب خودروی خود، قطعات سازگار را سریع و مطمئن بیابید.</p>
+                                </div>
                             </div>
-                            <p class="mt-1.5 text-xs text-slate-500 leading-relaxed">راهنمای تخصصی انتخاب قطعات خودرو در مجله توربوپارت؛ این مقاله با دقت فنی و منابع معتبر به قلم تیم توربوپارت تهیه شده است.</p>
-                        </div>
-                    </div>
-
-                    <!-- Calm end CTA -->
-                    <div class="mt-8 reveal rounded-xl border border-gray-200 bg-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-                        <div class="flex items-start gap-4">
-                            <div class="w-10 h-10 rounded-lg bg-brand-accent/10 flex items-center justify-center shrink-0">
-                                <i class="fa-solid fa-road text-brand-accent"></i>
-                            </div>
-                            <div>
-                                <div class="text-[10px] font-bold text-slate-400 tracking-wide mb-1">ادامه مسیر در توربوپارت</div>
-                                <h2 class="text-base sm:text-lg font-black text-ink">راهنمای دیگری خواندید؟ حالا قطعه مناسب را پیدا کنید.</h2>
-                                <p class="text-xs text-slate-500 mt-1">با انتخاب خودروی خود، قطعات سازگار را سریع و مطمئن بیابید.</p>
+                            <div class="flex items-center gap-2.5 shrink-0 sm:pr-4">
+                                <a href="/store" class="px-5 py-2.5 rounded-lg bg-brand-accent text-ink text-xs font-bold hover:bg-brand-hover transition-colors whitespace-nowrap">
+                                    ورود به فروشگاه
+                                </a>
+                                <a href="/articles" class="px-4 py-2.5 rounded-lg border border-gray-200 text-xs font-bold text-slate-600 hover:border-brand-accent/40 hover:text-brand-accent transition-colors whitespace-nowrap">
+                                    مقالات بیشتر
+                                </a>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2.5 shrink-0 sm:pr-4">
-                            <a href="/store" class="px-5 py-2.5 rounded-lg bg-brand-accent text-ink text-xs font-bold hover:bg-brand-hover transition-colors whitespace-nowrap">
-                                ورود به فروشگاه
-                            </a>
-                            <a href="/articles" class="px-4 py-2.5 rounded-lg border border-gray-200 text-xs font-bold text-slate-600 hover:border-brand-accent/40 hover:text-brand-accent transition-colors whitespace-nowrap">
-                                مقالات بیشتر
-                            </a>
+
+                        <!-- Discussion -->
+                        <section class="mt-14 sm:mt-16" aria-labelledby="discussion-title">
+                            <div class="mb-7 flex items-start justify-between gap-6">
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Discussion</p>
+                                    <h2 id="discussion-title" class="mt-2 text-xl font-black leading-tight text-ink sm:text-2xl">
+                                        گفتگو درباره این مقاله
+                                    </h2>
+                                    <p v-if="discussion.section.total" class="mt-1.5 text-xs text-slate-500">
+                                        {{ faNum(discussion.section.total) }} دیدگاه ثبت شده است
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-brand-accent px-5 py-3 text-xs font-black text-ink transition hover:bg-brand-hover min-h-[44px]"
+                                    @click="discussion.openComposer()"
+                                >
+                                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                                    افزودن دیدگاه
+                                </button>
+                            </div>
+
+                            <CommentList :section="discussion.section" kind="article" />
+                        </section>
+
+                        <CommentComposer v-model="discussion.section.composerOpen" kind="article" :section="discussion.section" />
+
+                        <!-- Related articles: shown here on mobile (below content) -->
+                        <div class="mt-16 lg:hidden">
+                            <div v-if="relatedLoading" class="space-y-4">
+                                <div v-for="i in 3" :key="i" class="flex gap-4 items-start">
+                                    <div class="w-20 h-20 rounded-lg bg-gray-200 animate-pulse shrink-0"></div>
+                                    <div class="flex-1 space-y-2">
+                                        <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                                        <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else-if="relatedArticles.length" class="reveal">
+                                <div class="mb-6">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="h-px w-6 bg-brand-accent"></span>
+                                        <span class="text-[10px] font-bold text-slate-400 tracking-wide">مرتبط با این مقاله</span>
+                                    </div>
+                                    <h2 class="text-lg sm:text-xl font-black text-ink">مقالات مرتبط</h2>
+                                </div>
+                                <div class="space-y-4">
+                                    <a v-for="rel in relatedArticles" :key="rel.id" :href="`/articles/${encodeURIComponent(rel.slug)}`" class="group flex gap-4 items-start">
+                                        <div class="w-20 h-20 rounded-lg border border-gray-200 bg-gradient-to-br from-brand-accent/15 via-amber-100 to-sand overflow-hidden shrink-0">
+                                            <img v-if="relatedArticleImage(rel)" :src="relatedArticleImage(rel)" :alt="rel.title" class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]" @error="onImgError($event)" loading="lazy" />
+                                        </div>
+                                        <div class="flex-1 min-w-0 pt-0.5">
+                                            <h3 class="font-black text-sm text-ink leading-[1.6] line-clamp-2 transition-colors duration-300 group-hover:text-brand-hover">{{ rel.title }}</h3>
+                                            <div class="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
+                                                <span>{{ formatDate(rel.published_at) }}</span>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
+
                     </div>
 
-                    <!-- Discussion -->
-                    <section class="mt-14 sm:mt-16" aria-labelledby="discussion-title">
-                        <div class="mb-7 flex items-start justify-between gap-6">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Discussion</p>
-                                <h2 id="discussion-title" class="mt-2 text-xl font-black leading-tight text-ink sm:text-2xl">
-                                    گفتگو درباره این مقاله
-                                </h2>
-                                <p v-if="discussion.section.total" class="mt-1.5 text-xs text-slate-500">
-                                    {{ faNum(discussion.section.total) }} دیدگاه ثبت شده است
-                                </p>
+                    <!-- Sidebar: related articles (desktop only) -->
+                    <aside class="hidden lg:block">
+                        <div class="sticky top-24">
+                            <div v-if="relatedLoading" class="space-y-4">
+                                <div v-for="i in 4" :key="i" class="flex gap-4 items-start">
+                                    <div class="w-20 h-20 rounded-lg bg-gray-200 animate-pulse shrink-0"></div>
+                                    <div class="flex-1 space-y-2">
+                                        <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                                        <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+                                    </div>
+                                </div>
                             </div>
-                            <button
-                                type="button"
-                                class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-brand-accent px-5 py-3 text-xs font-black text-ink transition hover:bg-brand-hover min-h-[44px]"
-                                @click="discussion.openComposer()"
-                            >
-                                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-                                افزودن دیدگاه
-                            </button>
+                            <div v-else-if="relatedArticles.length" class="reveal">
+                                <div class="mb-6">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="h-px w-6 bg-brand-accent"></span>
+                                        <span class="text-[10px] font-bold text-slate-400 tracking-wide">مرتبط با این مقاله</span>
+                                    </div>
+                                    <h2 class="text-lg font-black text-ink">مقالات مرتبط</h2>
+                                </div>
+                                <div class="space-y-4">
+                                    <a v-for="rel in relatedArticles" :key="rel.id" :href="`/articles/${encodeURIComponent(rel.slug)}`" class="group flex gap-4 items-start">
+                                        <div class="w-20 h-20 rounded-lg border border-gray-200 bg-gradient-to-br from-brand-accent/15 via-amber-100 to-sand overflow-hidden shrink-0">
+                                            <img v-if="relatedArticleImage(rel)" :src="relatedArticleImage(rel)" :alt="rel.title" class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]" @error="onImgError($event)" loading="lazy" />
+                                        </div>
+                                        <div class="flex-1 min-w-0 pt-0.5">
+                                            <h3 class="font-black text-sm text-ink leading-[1.6] line-clamp-2 transition-colors duration-300 group-hover:text-brand-hover">{{ rel.title }}</h3>
+                                            <div class="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
+                                                <span>{{ formatDate(rel.published_at) }}</span>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
-
-                        <CommentList :section="discussion.section" kind="article" />
-                    </section>
-
-                    <CommentComposer v-model="discussion.section.composerOpen" kind="article" :section="discussion.section" />
+                    </aside>
                 </div>
 
-                <!-- Related section (wider than reading column) -->
-                <div class="max-w-4xl mx-auto mt-16">
+                <!-- Related products & vehicles (full width below) -->
+                <div class="mt-16">
 
                     <!-- Related products -->
                     <div v-if="relatedProducts.length" class="reveal">
@@ -490,7 +602,8 @@ input::placeholder { opacity: 0.75; }
 .article-body {
     color: var(--color-ink);
     font-size: 1.05rem;
-    line-height: 2.15;
+    line-height: 2;
+    text-align: justify;
     word-break: break-word;
 }
 .article-body > *:first-child {
@@ -501,7 +614,7 @@ input::placeholder { opacity: 0.75; }
 }
 .article-body > p:first-child {
     font-size: 1.15rem;
-    line-height: 2.1;
+    line-height: 2;
     color: var(--color-ink);
 }
 .article-body h2 {

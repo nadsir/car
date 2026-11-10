@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="قطعات سیستم تهویه و کولر خودرو">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfaf6"/>
+      <stop offset="0.5" stop-color="#f0eee7"/>
+      <stop offset="1" stop-color="#e3e0d5"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="48%" r="50%">
+      <stop offset="0" stop-color="#FFCD00" stop-opacity="0.26"/>
+      <stop offset="0.65" stop-color="#FFCD00" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFCD00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b747e"/>
+      <stop offset="0.5" stop-color="#363d45"/>
+      <stop offset="1" stop-color="#171b1f"/>
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#1a1a1a" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#grid)"/>
+  <ellipse cx="400" cy="292" rx="330" ry="245" fill="url(#glow)"/>
+  <circle cx="400" cy="292" r="250" fill="none" stroke="#1a1a1a" stroke-opacity="0.07" stroke-width="2"/>
+  <circle cx="400" cy="292" r="286" fill="none" stroke="#FFCD00" stroke-opacity="0.2" stroke-width="2" stroke-dasharray="6 14"/>
+
+  <g opacity="0.6" stroke="#FFCD00" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M84 146H208"/>
+    <path d="M84 172H164"/>
+    <path d="M602 466H718"/>
+    <path d="M648 492H720"/>
+  </g>
+
+  <g transform="translate(400 292) rotate(-2)">
+    <ellipse cx="0" cy="174" rx="230" ry="26" fill="#1a1a1a" opacity="0.1"/>
+
+    <!-- compressor -->
+    <rect x="-220" y="-70" width="360" height="224" rx="46" fill="url(#metal)" stroke="#98a1ab" stroke-opacity="0.45" stroke-width="3"/>
+    <circle cx="-40" cy="42" r="106" fill="#1b2025" stroke="#98a1ab" stroke-opacity="0.5" stroke-width="3"/>
+    <circle cx="-40" cy="42" r="72" fill="none" stroke="#FFCD00" stroke-opacity="0.35" stroke-width="4"/>
+    <circle cx="-40" cy="42" r="24" fill="#FFCD00" fill-opacity="0.5"/>
+    <g stroke="#FFCD00" stroke-opacity="0.5" stroke-width="5" stroke-linecap="round">
+      <path d="M-40 -64V-30"/>
+      <path d="M-40 148V114"/>
+      <path d="M-146 42H-112"/>
+      <path d="M66 42H32"/>
+      <path d="M-115 -33L-91 -9"/>
+      <path d="M35 117L11 93"/>
+      <path d="M35 -33L11 -9"/>
+      <path d="M-115 117L-91 93"/>
+    </g>
+
+    <!-- pipes -->
+    <path d="M140 4H218V-74" fill="none" stroke="#9aa3ad" stroke-width="16" stroke-linecap="round" opacity="0.75"/>
+    <path d="M140 78H250V142" fill="none" stroke="#9aa3ad" stroke-width="13" stroke-linecap="round" opacity="0.6"/>
+    <path d="M218 -74H276" fill="none" stroke="#FFCD00" stroke-width="8" stroke-linecap="round" opacity="0.55"/>
+
+    <!-- snowflake -->
+    <g transform="translate(238 176)" stroke="#FFCD00" stroke-opacity="0.8" stroke-width="6" stroke-linecap="round" fill="none">
+      <path d="M0 -38V38"/>
+      <path d="M-33 -19L33 19"/>
+      <path d="M-33 19L33 -19"/>
+      <path d="M-8 -30L0 -22L8 -30"/>
+      <path d="M-8 30L0 22L8 30"/>
+      <path d="M-30 -8L-22 0L-30 8"/>
+      <path d="M30 -8L22 0L30 8"/>
+    </g>
+
+    <g fill="#FFCD00" opacity="0.6">
+      <circle cx="-196" cy="-38" r="5"/>
+      <circle cx="-172" cy="-38" r="5"/>
+      <circle cx="-148" cy="-38" r="5"/>
+    </g>
+  </g>
+</svg>

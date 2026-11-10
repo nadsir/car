@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-label="نمای صنعتی از موتور خودرو">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0c0e"/>
+      <stop offset="0.5" stop-color="#14181c"/>
+      <stop offset="1" stop-color="#282b2e"/>
+    </linearGradient>
+    <radialGradient id="glow2" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#FFCD00" stop-opacity="0.42"/>
+      <stop offset="0.6" stop-color="#FFCD00" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#FFCD00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="metal2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a6067"/>
+      <stop offset="0.4" stop-color="#2b3035"/>
+      <stop offset="1" stop-color="#101215"/>
+    </linearGradient>
+    <linearGradient id="pipe2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1a1d20"/>
+      <stop offset="0.5" stop-color="#8b9299"/>
+      <stop offset="1" stop-color="#1a1d20"/>
+    </linearGradient>
+    <pattern id="grid2" width="64" height="64" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M64 0H0V64" fill="none" stroke="#ffffff" stroke-opacity="0.028" stroke-width="1"/>
+    </pattern>
+    <filter id="blur2" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="38"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg2)"/>
+  <rect width="1600" height="900" fill="url(#grid2)"/>
+  <ellipse cx="1050" cy="460" rx="560" ry="380" fill="url(#glow2)" filter="url(#blur2)"/>
+
+  <g opacity="0.55" stroke="#FFCD00" stroke-width="2" stroke-linecap="round" fill="none">
+    <path d="M120 640H360V540H470"/>
+    <path d="M120 676H300V590H420"/>
+    <circle cx="470" cy="540" r="7"/>
+    <circle cx="420" cy="590" r="7"/>
+  </g>
+
+  <g transform="translate(590 180)">
+    <!-- engine block -->
+    <rect x="90" y="180" width="520" height="350" rx="42" fill="url(#metal2)" stroke="#8b939a" stroke-opacity="0.35" stroke-width="3"/>
+    <rect x="126" y="216" width="448" height="278" rx="26" fill="#101317" stroke="#FFCD00" stroke-opacity="0.18" stroke-width="2"/>
+
+    <!-- cylinders -->
+    <g>
+      <rect x="162" y="86" width="80" height="180" rx="18" fill="url(#metal2)" stroke="#9aa1a8" stroke-opacity="0.35" stroke-width="2"/>
+      <rect x="174" y="16" width="56" height="92" rx="12" fill="#1b1f23" stroke="#FFCD00" stroke-opacity="0.5" stroke-width="2"/>
+      <rect x="288" y="86" width="80" height="180" rx="18" fill="url(#metal2)" stroke="#9aa1a8" stroke-opacity="0.35" stroke-width="2"/>
+      <rect x="300" y="16" width="56" height="92" rx="12" fill="#1b1f23" stroke="#FFCD00" stroke-opacity="0.5" stroke-width="2"/>
+      <rect x="414" y="86" width="80" height="180" rx="18" fill="url(#metal2)" stroke="#9aa1a8" stroke-opacity="0.35" stroke-width="2"/>
+      <rect x="426" y="16" width="56" height="92" rx="12" fill="#1b1f23" stroke="#FFCD00" stroke-opacity="0.5" stroke-width="2"/>
+      <rect x="540" y="86" width="80" height="180" rx="18" fill="url(#metal2)" stroke="#9aa1a8" stroke-opacity="0.35" stroke-width="2"/>
+      <rect x="552" y="16" width="56" height="92" rx="12" fill="#1b1f23" stroke="#FFCD00" stroke-opacity="0.5" stroke-width="2"/>
+    </g>
+
+    <!-- glowing rings -->
+    <g fill="none" stroke="#FFCD00">
+      <circle cx="202" cy="250" r="24" stroke-opacity="0.7" stroke-width="3"/>
+      <circle cx="328" cy="250" r="24" stroke-opacity="0.7" stroke-width="3"/>
+      <circle cx="454" cy="250" r="24" stroke-opacity="0.7" stroke-width="3"/>
+      <circle cx="580" cy="250" r="24" stroke-opacity="0.7" stroke-width="3"/>
+    </g>
+
+    <!-- side pipes -->
+    <rect x="20" y="250" width="90" height="28" rx="14" fill="url(#pipe2)"/>
+    <rect x="20" y="315" width="90" height="28" rx="14" fill="url(#pipe2)"/>
+    <rect x="20" y="380" width="90" height="28" rx="14" fill="url(#pipe2)"/>
+    <rect x="590" y="388" width="130" height="40" rx="20" fill="url(#pipe2)"/>
+    <rect x="660" y="438" width="34" height="92" rx="15" fill="url(#pipe2)"/>
+
+    <!-- bolts -->
+    <g fill="#8c939a" opacity="0.65">
+      <circle cx="126" cy="216" r="7"/>
+      <circle cx="574" cy="216" r="7"/>
+      <circle cx="126" cy="494" r="7"/>
+      <circle cx="574" cy="494" r="7"/>
+    </g>
+
+    <!-- yellow accent stripe -->
+    <path d="M144 452H556" stroke="#FFCD00" stroke-opacity="0.62" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <g opacity="0.55" fill="none" stroke="#FFCD00" stroke-width="2">
+    <circle cx="1418" cy="700" r="58"/>
+    <circle cx="1418" cy="700" r="26"/>
+    <path d="M1418 642V758M1360 700H1476M1377 659L1459 741M1459 659L1377 741"/>
+  </g>
+  <g opacity="0.28" fill="#ffffff">
+    <circle cx="260" cy="210" r="2.5"/>
+    <circle cx="330" cy="160" r="1.8"/>
+    <circle cx="1470" cy="230" r="2.2"/>
+    <circle cx="1370" cy="300" r="1.6"/>
+  </g>
+</svg>

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="قطعات مصرفی و متفرقه خودرو">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfaf6"/>
+      <stop offset="0.5" stop-color="#f0eee7"/>
+      <stop offset="1" stop-color="#e3e0d5"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="48%" r="50%">
+      <stop offset="0" stop-color="#FFCD00" stop-opacity="0.28"/>
+      <stop offset="0.65" stop-color="#FFCD00" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFCD00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b747e"/>
+      <stop offset="0.5" stop-color="#363d45"/>
+      <stop offset="1" stop-color="#171b1f"/>
+    </linearGradient>
+    <linearGradient id="oil" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4b5560"/>
+      <stop offset="0.6" stop-color="#242a31"/>
+      <stop offset="1" stop-color="#12161a"/>
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#1a1a1a" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#grid)"/>
+  <ellipse cx="400" cy="292" rx="330" ry="245" fill="url(#glow)"/>
+  <circle cx="400" cy="292" r="250" fill="none" stroke="#1a1a1a" stroke-opacity="0.07" stroke-width="2"/>
+  <circle cx="400" cy="292" r="286" fill="none" stroke="#FFCD00" stroke-opacity="0.2" stroke-width="2" stroke-dasharray="6 14"/>
+
+  <g opacity="0.6" stroke="#FFCD00" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M84 146H208"/>
+    <path d="M84 172H164"/>
+    <path d="M602 466H718"/>
+    <path d="M648 492H720"/>
+  </g>
+
+  <g transform="translate(400 292) rotate(-2)">
+    <ellipse cx="0" cy="188" rx="250" ry="28" fill="#1a1a1a" opacity="0.1"/>
+
+    <!-- cardboard box -->
+    <g transform="translate(-154 52)">
+      <path d="M-120 -34L0 -92L120 -34V128L0 190L-120 128Z" fill="#e8dfca" stroke="#b6a98a" stroke-width="3"/>
+      <path d="M-120 -34L0 24L120 -34M0 24V190" fill="none" stroke="#b6a98a" stroke-width="3"/>
+      <path d="M0 -92V24" stroke="#cabf9f" stroke-width="3"/>
+      <path d="M-58 42L-22 60L14 42" fill="none" stroke="#FFCD00" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="-48" y="92" width="96" height="48" rx="8" fill="#fffaf0" stroke="#b6a98a" stroke-width="2"/>
+      <path d="M-28 110H28M-28 122H12" stroke="#b6a98a" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- oil bottle -->
+    <g transform="translate(146 -16)">
+      <path d="M-58 -172H58V-128C58 -108 84 -96 92 -66C98 -42 100 22 100 62C100 138 62 176 0 176C-62 176 -100 138 -100 62C-100 22 -98 -42 -92 -66C-84 -96 -58 -108 -58 -128Z"
+            fill="url(#oil)" stroke="#8f98a2" stroke-opacity="0.45" stroke-width="3"/>
+      <rect x="-40" y="-206" width="80" height="40" rx="10" fill="#c1c9d1" stroke="#8f98a2" stroke-opacity="0.4" stroke-width="2"/>
+      <path d="M-58 -128C-28 -112 28 -112 58 -128" fill="none" stroke="#FFCD00" stroke-opacity="0.55" stroke-width="6"/>
+      <path d="M-54 20C-20 6 20 6 54 20" fill="none" stroke="#FFCD00" stroke-opacity="0.6" stroke-width="8" stroke-linecap="round"/>
+      <rect x="-48" y="52" width="96" height="64" rx="12" fill="#FFCD00" opacity="0.9"/>
+      <path d="M-26 84H26" stroke="#1a1a1a" stroke-opacity="0.45" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <!-- wrench -->
+    <g transform="translate(-6 196) rotate(-18)" opacity="0.9">
+      <path d="M-130 0H86" stroke="#1a1a1a" stroke-opacity="0.55" stroke-width="16" stroke-linecap="round"/>
+      <circle cx="98" cy="0" r="28" fill="none" stroke="#1a1a1a" stroke-opacity="0.55" stroke-width="14"/>
+    </g>
+  </g>
+</svg>

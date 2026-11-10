@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="قطعات بدنه و روشنایی خودرو">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfaf6"/>
+      <stop offset="0.5" stop-color="#f0eee7"/>
+      <stop offset="1" stop-color="#e3e0d5"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="48%" r="50%">
+      <stop offset="0" stop-color="#FFCD00" stop-opacity="0.3"/>
+      <stop offset="0.65" stop-color="#FFCD00" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFCD00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b747e"/>
+      <stop offset="0.5" stop-color="#363d45"/>
+      <stop offset="1" stop-color="#171b1f"/>
+    </linearGradient>
+    <radialGradient id="lens" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#fff7cc"/>
+      <stop offset="0.45" stop-color="#ffe066"/>
+      <stop offset="1" stop-color="#c79b00"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#1a1a1a" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#grid)"/>
+  <ellipse cx="400" cy="292" rx="330" ry="245" fill="url(#glow)"/>
+  <circle cx="400" cy="292" r="250" fill="none" stroke="#1a1a1a" stroke-opacity="0.07" stroke-width="2"/>
+  <circle cx="400" cy="292" r="286" fill="none" stroke="#FFCD00" stroke-opacity="0.2" stroke-width="2" stroke-dasharray="6 14"/>
+
+  <g opacity="0.6" stroke="#FFCD00" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M84 146H208"/>
+    <path d="M84 172H164"/>
+    <path d="M602 466H718"/>
+    <path d="M648 492H720"/>
+  </g>
+
+  <g transform="translate(400 292) rotate(-3)">
+    <ellipse cx="0" cy="168" rx="230" ry="26" fill="#1a1a1a" opacity="0.1"/>
+
+    <!-- body panel -->
+    <path d="M-270 132C-234 30 -150 -36 -46 -52C58 -68 164 -30 238 54L270 132Z" fill="url(#metal)" stroke="#98a1ab" stroke-opacity="0.4" stroke-width="3"/>
+    <path d="M-244 108C-212 26 -138 -22 -48 -34C42 -46 138 -14 202 54" fill="none" stroke="#FFCD00" stroke-opacity="0.35" stroke-width="4"/>
+
+    <!-- headlight -->
+    <path d="M-196 52C-176 -34 -108 -72 -22 -62C64 -52 122 -4 142 64L96 112C22 134 -84 128 -166 108Z" fill="#20262c" stroke="#aab2ba" stroke-opacity="0.45" stroke-width="3"/>
+    <ellipse cx="-34" cy="34" rx="92" ry="62" transform="rotate(-8 -34 34)" fill="url(#lens)" stroke="#fff2a8" stroke-opacity="0.6" stroke-width="3"/>
+    <ellipse cx="-34" cy="34" rx="48" ry="31" transform="rotate(-8 -34 34)" fill="#fffbe6" opacity="0.55"/>
+    <circle cx="-34" cy="34" r="15" fill="#fffdf2" opacity="0.9"/>
+
+    <!-- beam -->
+    <g stroke="#FFCD00" stroke-linecap="round" fill="none" opacity="0.65">
+      <path d="M126 22H286" stroke-width="8"/>
+      <path d="M112 58H236" stroke-width="5"/>
+      <path d="M104 92H210" stroke-width="3"/>
+    </g>
+    <g fill="#FFCD00" opacity="0.55">
+      <circle cx="286" cy="22" r="7"/>
+      <circle cx="236" cy="58" r="5"/>
+      <circle cx="210" cy="92" r="4"/>
+    </g>
+
+    <!-- reflector lines -->
+    <g stroke="#1a1a1a" stroke-opacity="0.25" stroke-width="3" stroke-linecap="round">
+      <path d="M-104 4C-80 -18 -40 -24 -4 -14"/>
+      <path d="M-96 34H-18"/>
+    </g>
+  </g>
+</svg>

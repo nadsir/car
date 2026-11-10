@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="قطعات سیستم انتقال قدرت">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfaf6"/>
+      <stop offset="0.5" stop-color="#f0eee7"/>
+      <stop offset="1" stop-color="#e3e0d5"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="48%" r="50%">
+      <stop offset="0" stop-color="#FFCD00" stop-opacity="0.28"/>
+      <stop offset="0.65" stop-color="#FFCD00" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFCD00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b747e"/>
+      <stop offset="0.5" stop-color="#363d45"/>
+      <stop offset="1" stop-color="#171b1f"/>
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#1a1a1a" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#grid)"/>
+  <ellipse cx="400" cy="292" rx="330" ry="245" fill="url(#glow)"/>
+  <circle cx="400" cy="292" r="250" fill="none" stroke="#1a1a1a" stroke-opacity="0.07" stroke-width="2"/>
+  <circle cx="400" cy="292" r="286" fill="none" stroke="#FFCD00" stroke-opacity="0.2" stroke-width="2" stroke-dasharray="6 14"/>
+
+  <g opacity="0.6" stroke="#FFCD00" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M84 140H210"/>
+    <path d="M84 166H160"/>
+    <path d="M604 468H718"/>
+    <path d="M650 494H720"/>
+  </g>
+
+  <g transform="translate(400 292) rotate(-3)">
+    <ellipse cx="0" cy="150" rx="240" ry="26" fill="#1a1a1a" opacity="0.1"/>
+
+    <path d="M-250 60L-160 6C-120 -18 -80 -26 -34 -26H120C170 -26 204 -6 228 34L266 102H-250Z" fill="url(#metal)" stroke="#8b949e" stroke-opacity="0.45" stroke-width="3"/>
+    <circle cx="-190" cy="52" r="74" fill="#1b2025" stroke="#99a2ac" stroke-opacity="0.5" stroke-width="3"/>
+    <circle cx="-190" cy="52" r="46" fill="none" stroke="#FFCD00" stroke-opacity="0.4" stroke-width="3"/>
+    <circle cx="-190" cy="52" r="15" fill="#FFCD00" fill-opacity="0.55"/>
+
+    <g transform="translate(54 -6)">
+      <circle r="94" fill="#20262c" stroke="#8f98a2" stroke-opacity="0.5" stroke-width="3"/>
+      <circle r="94" fill="none" stroke="#FFCD00" stroke-opacity="0.45" stroke-width="8" stroke-dasharray="12 12"/>
+      <circle r="52" fill="#12161a" stroke="#9aa3ad" stroke-opacity="0.4" stroke-width="2"/>
+      <g stroke="#FFCD00" stroke-opacity="0.45" stroke-width="5" stroke-linecap="round">
+        <path d="M0 -42V-22"/>
+        <path d="M0 42V22"/>
+        <path d="M-42 0H-22"/>
+        <path d="M42 0H22"/>
+        <path d="M-30 -30L-16 -16"/>
+        <path d="M30 30L16 16"/>
+        <path d="M30 -30L16 -16"/>
+        <path d="M-30 30L-16 16"/>
+      </g>
+      <circle r="13" fill="#FFCD00" fill-opacity="0.7"/>
+    </g>
+
+    <g transform="translate(196 40)">
+      <circle r="52" fill="#20262c" stroke="#8f98a2" stroke-opacity="0.45" stroke-width="2"/>
+      <circle r="52" fill="none" stroke="#FFCD00" stroke-opacity="0.35" stroke-width="6" stroke-dasharray="9 10"/>
+      <circle r="24" fill="#12161a"/>
+      <circle r="7" fill="#FFCD00" fill-opacity="0.6"/>
+    </g>
+
+    <path d="M266 74H342" stroke="#9aa3ad" stroke-width="18" stroke-linecap="round" opacity="0.75"/>
+    <path d="M342 74H378" stroke="#FFCD00" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+
+    <g fill="#FFCD00" opacity="0.6">
+      <circle cx="-96" cy="58" r="4"/>
+      <circle cx="-72" cy="58" r="4"/>
+      <circle cx="-48" cy="58" r="4"/>
+    </g>
+  </g>
+</svg>

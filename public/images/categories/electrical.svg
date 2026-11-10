@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="قطعات برق و الکترونیک خودرو">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfaf6"/>
+      <stop offset="0.5" stop-color="#f0eee7"/>
+      <stop offset="1" stop-color="#e3e0d5"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="48%" r="50%">
+      <stop offset="0" stop-color="#FFCD00" stop-opacity="0.3"/>
+      <stop offset="0.65" stop-color="#FFCD00" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#FFCD00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b747e"/>
+      <stop offset="0.5" stop-color="#363d45"/>
+      <stop offset="1" stop-color="#171b1f"/>
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#1a1a1a" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#grid)"/>
+  <ellipse cx="400" cy="292" rx="330" ry="245" fill="url(#glow)"/>
+  <circle cx="400" cy="292" r="250" fill="none" stroke="#1a1a1a" stroke-opacity="0.07" stroke-width="2"/>
+  <circle cx="400" cy="292" r="286" fill="none" stroke="#FFCD00" stroke-opacity="0.2" stroke-width="2" stroke-dasharray="6 14"/>
+
+  <g opacity="0.6" stroke="#FFCD00" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M84 146H208"/>
+    <path d="M84 172H164"/>
+    <path d="M602 466H718"/>
+    <path d="M648 492H720"/>
+  </g>
+
+  <g transform="translate(400 294) rotate(-2)">
+    <ellipse cx="0" cy="146" rx="220" ry="26" fill="#1a1a1a" opacity="0.1"/>
+
+    <!-- battery -->
+    <rect x="-196" y="-60" width="392" height="196" rx="26" fill="url(#metal)" stroke="#98a1ab" stroke-opacity="0.45" stroke-width="3"/>
+    <rect x="-168" y="-34" width="336" height="144" rx="18" fill="#12161a" stroke="#FFCD00" stroke-opacity="0.2" stroke-width="2"/>
+    <rect x="-146" y="-104" width="58" height="46" rx="10" fill="#c1c9d1" stroke="#8f98a2" stroke-opacity="0.5" stroke-width="2"/>
+    <rect x="88" y="-104" width="58" height="46" rx="10" fill="#c1c9d1" stroke="#8f98a2" stroke-opacity="0.5" stroke-width="2"/>
+    <path d="M-117 -104V-124M117 -104V-124" stroke="#FFCD00" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+    <g fill="#FFCD00" opacity="0.6">
+      <circle cx="-124" cy="36" r="5"/>
+      <circle cx="-100" cy="36" r="5"/>
+      <circle cx="-76" cy="36" r="5"/>
+    </g>
+
+    <!-- bolt -->
+    <path d="M40 -150L-30 -18H22L-12 88L78 -46H22L56 -150Z" fill="#FFCD00" fill-opacity="0.9" stroke="#c79b00" stroke-width="3" stroke-linejoin="round"/>
+
+    <!-- circuit traces -->
+    <g stroke="#FFCD00" stroke-opacity="0.55" stroke-width="4" stroke-linecap="round" fill="none">
+      <path d="M-196 92H-250V156H-300"/>
+      <path d="M196 60H250V-20H300"/>
+      <path d="M-196 36H-236"/>
+    </g>
+    <g fill="#FFCD00" opacity="0.7">
+      <circle cx="-300" cy="156" r="7"/>
+      <circle cx="300" cy="-20" r="7"/>
+      <circle cx="-236" cy="36" r="7"/>
+    </g>
+    <g stroke="#1a1a1a" stroke-opacity="0.25" stroke-width="3" stroke-linecap="round">
+      <path d="M-92 76H-52"/>
+      <path d="M-84 94H-60"/>
+    </g>
+  </g>
+</svg>
